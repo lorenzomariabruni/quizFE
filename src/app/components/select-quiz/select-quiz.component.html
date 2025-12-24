@@ -1,0 +1,75 @@
+<div class="container">
+  <div class="card" style="margin-top: 50px;">
+    <h1 style="text-align: center; color: #667eea; margin-bottom: 30px;">
+      📚 Seleziona Quiz
+    </h1>
+
+    <div *ngIf="loading" style="text-align: center; padding: 40px;">
+      <div style="font-size: 48px; margin-bottom: 20px;">⏳</div>
+      <p>Caricamento quiz...</p>
+    </div>
+
+    <div *ngIf="error" style="background: #fed7d7; padding: 20px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+      <p style="color: #c53030; margin: 0;">❌ {{ error }}</p>
+    </div>
+
+    <div *ngIf="!loading && !error">
+      <div *ngIf="quizzes.length === 0" style="text-align: center; padding: 40px;">
+        <p style="color: #666; margin-bottom: 20px;">Nessun quiz disponibile</p>
+        <a routerLink="/create-quiz" class="btn btn-primary">
+          ➕ Crea il Primo Quiz
+        </a>
+      </div>
+
+      <div *ngIf="quizzes.length > 0" style="display: flex; flex-direction: column; gap: 15px;">
+        <div 
+          *ngFor="let quiz of quizzes" 
+          class="quiz-item"
+          [class.selected]="selectedQuiz === quiz.name"
+          (click)="selectQuiz(quiz.name)"
+          style="padding: 20px; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all 0.2s;">
+          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+            <h3 style="margin: 0; color: #667eea;">{{ quiz.title }}</h3>
+            <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: 600;">
+              {{ quiz.question_count }} domande
+            </span>
+          </div>
+          <p *ngIf="quiz.description" style="color: #666; margin: 10px 0 0 0;">{{ quiz.description }}</p>
+          <div *ngIf="selectedQuiz === quiz.name" style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #667eea;">
+            <p style="color: #667eea; font-weight: 600; margin: 0;">✅ Selezionato</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-top: 30px;">
+        <button 
+          class="btn btn-secondary" 
+          (click)="goBack()"
+          style="flex: 1;">
+          ← Indietro
+        </button>
+        <button 
+          class="btn btn-primary" 
+          (click)="createSession()"
+          [disabled]="!selectedQuiz"
+          style="flex: 2;">
+          🚀 Crea Sessione
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.quiz-item:hover {
+  border-color: #667eea;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+  transform: translateY(-2px);
+}
+
+.quiz-item.selected {
+  border-color: #667eea;
+  background: #f7faff;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+</style>

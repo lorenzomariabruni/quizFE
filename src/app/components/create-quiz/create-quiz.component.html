@@ -1,0 +1,202 @@
+<div class="container">
+  <div class="card" style="margin-top: 50px; max-width: 800px; margin-left: auto; margin-right: auto;">
+    <h1 style="text-align: center; color: #667eea; margin-bottom: 30px;">
+      ➕ Crea Nuovo Quiz
+    </h1>
+
+    <!-- Error/Success messages -->
+    <div *ngIf="error" style="background: #fed7d7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+      <p style="color: #c53030; margin: 0;">❌ {{ error }}</p>
+    </div>
+
+    <div *ngIf="success" style="background: #c6f6d5; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+      <p style="color: #22543d; margin: 0;">✅ {{ success }}</p>
+    </div>
+
+    <!-- Step 1: Create Quiz -->
+    <div *ngIf="!quizCreated">
+      <h2 style="color: #667eea; margin-bottom: 20px;">1. Informazioni Quiz</h2>
+      
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Nome Quiz (ID):</label>
+        <input 
+          type="text" 
+          [(ngModel)]="quizName" 
+          placeholder="es: quiz-storia-2024"
+          style="width: 100%;"
+        />
+        <small style="color: #666;">Usato come identificatore (solo lettere, numeri, - e _)</small>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Titolo:</label>
+        <input 
+          type="text" 
+          [(ngModel)]="quizTitle" 
+          placeholder="es: Quiz di Storia - Seconda Guerra Mondiale"
+          style="width: 100%;"
+        />
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Descrizione (opzionale):</label>
+        <textarea 
+          [(ngModel)]="quizDescription" 
+          placeholder="Breve descrizione del quiz..."
+          rows="3"
+          style="width: 100%; resize: vertical;"
+        ></textarea>
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <button class="btn btn-secondary" (click)="goBack()" style="flex: 1;">
+          ← Annulla
+        </button>
+        <button 
+          class="btn btn-primary" 
+          (click)="createQuiz()" 
+          [disabled]="loading || !quizName.trim() || !quizTitle.trim()"
+          style="flex: 2;">
+          {{ loading ? '⏳ Creazione...' : '→ Continua' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Step 2: Add Questions -->
+    <div *ngIf="quizCreated">
+      <div style="background: #f7faff; padding: 15px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #667eea;">
+        <p style="margin: 0; font-weight: 600;">🎮 {{ quizTitle }}</p>
+        <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">
+          Domande aggiunte: {{ questions.length }}
+        </p>
+      </div>
+
+      <h2 style="color: #667eea; margin-bottom: 20px;">2. Aggiungi Domande</h2>
+
+      <!-- Question Type Selection -->
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Tipo Domanda:</label>
+        <div style="display: flex; gap: 10px;">
+          <button 
+            class="btn"
+            [class.btn-primary]="currentQuestion.type === 'text'"
+            [class.btn-secondary]="currentQuestion.type !== 'text'"
+            (click)="currentQuestion.type = 'text'; removeImage()"
+            style="flex: 1;">
+            📝 Solo Testo
+          </button>
+          <button 
+            class="btn"
+            [class.btn-primary]="currentQuestion.type === 'image'"
+            [class.btn-secondary]="currentQuestion.type !== 'image'"
+            (click)="currentQuestion.type = 'image'"
+            style="flex: 1;">
+            🖼️ Testo + Foto
+          </button>
+        </div>
+      </div>
+
+      <!-- Image Upload (if image type) -->
+      <div *ngIf="currentQuestion.type === 'image'" style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Immagine:</label>
+        
+        <div *ngIf="!currentQuestion.imagePreview" style="border: 2px dashed #cbd5e0; border-radius: 8px; padding: 30px; text-align: center; cursor: pointer;"
+             (click)="fileInput.click()">
+          <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
+          <p style="color: #666; margin: 0;">Clicca per caricare un'immagine</p>
+          <small style="color: #999;">PNG, JPG, GIF (max 5MB)</small>
+        </div>
+
+        <div *ngIf="currentQuestion.imagePreview" style="position: relative;">
+          <img [src]="currentQuestion.imagePreview" style="width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px;" />
+          <button 
+            (click)="removeImage()"
+            style="position: absolute; top: 10px; right: 10px; background: #f56565; color: white; border: none; border-radius: 50%; width: 32px; height: 32px; cursor: pointer; font-size: 18px;">
+            ×
+          </button>
+        </div>
+
+        <input 
+          #fileInput
+          type="file" 
+          accept="image/*"
+          (change)="onImageSelect($event)"
+          style="display: none;"
+        />
+      </div>
+
+      <!-- Question Text -->
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Testo Domanda:</label>
+        <textarea 
+          [(ngModel)]="currentQuestion.question" 
+          placeholder="Scrivi qui la domanda..."
+          rows="3"
+          style="width: 100%; resize: vertical;"
+        ></textarea>
+      </div>
+
+      <!-- Answers -->
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Risposte:</label>
+        <div *ngFor="let answer of currentQuestion.answers; let i = index" style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center;">
+          <input 
+            type="radio" 
+            [name]="'correct'"
+            [checked]="currentQuestion.correct_answer === i"
+            (change)="currentQuestion.correct_answer = i"
+            style="width: 20px; height: 20px; cursor: pointer;"
+          />
+          <input 
+            type="text" 
+            [(ngModel)]="currentQuestion.answers[i]" 
+            [placeholder]="'Risposta ' + (i + 1)"
+            style="flex: 1;"
+          />
+          <span style="color: #666; font-size: 12px; min-width: 60px;">
+            {{ currentQuestion.correct_answer === i ? '✅ Corretta' : '' }}
+          </span>
+        </div>
+        <small style="color: #666;">Seleziona il radio button per indicare la risposta corretta</small>
+      </div>
+
+      <!-- Add Question Button -->
+      <button 
+        class="btn btn-success" 
+        (click)="addQuestion()" 
+        [disabled]="loading"
+        style="width: 100%; margin-bottom: 20px; font-size: 16px; padding: 14px;">
+        {{ loading ? '⏳ Aggiunta...' : '➕ Aggiungi Domanda' }}
+      </button>
+
+      <!-- Questions List -->
+      <div *ngIf="questions.length > 0" style="margin-top: 30px; padding-top: 30px; border-top: 2px solid #e2e8f0;">
+        <h3 style="color: #667eea; margin-bottom: 15px;">Domande Aggiunte ({{ questions.length }}):</h3>
+        <div *ngFor="let q of questions; let i = index" style="background: #f7faff; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid #667eea;">
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div style="flex: 1;">
+              <span style="background: #667eea; color: white; padding: 2px 8px; border-radius: 12px; font-size: 12px; margin-right: 10px;">
+                {{ q.type === 'image' ? '🖼️' : '📝' }}
+              </span>
+              <strong>{{ i + 1 }}. {{ q.question }}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Finish Button -->
+      <div style="margin-top: 30px; display: flex; gap: 10px;">
+        <button class="btn btn-secondary" (click)="goBack()" style="flex: 1;">
+          ← Annulla
+        </button>
+        <button 
+          class="btn btn-primary" 
+          (click)="finishQuiz()" 
+          [disabled]="questions.length === 0"
+          style="flex: 2;">
+          ✅ Completa Quiz
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

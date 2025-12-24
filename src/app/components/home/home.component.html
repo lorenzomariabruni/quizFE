@@ -1,0 +1,37 @@
+<div class="container">
+  <div class="card" style="margin-top: 100px;">
+    <h1 style="text-align: center; color: #667eea; margin-bottom: 40px;">
+      🎮 Quiz Multiplayer
+    </h1>
+
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <a routerLink="/host" class="btn btn-primary" style="text-decoration: none; text-align: center; font-size: 18px; padding: 16px;">
+        🎯 Crea Sessione (Host)
+      </a>
+
+      <a routerLink="/create-quiz" class="btn btn-secondary" style="text-decoration: none; text-align: center; font-size: 18px; padding: 16px; background: #48bb78;">
+        ➕ Crea Nuovo Quiz
+      </a>
+    </div>
+
+    <div style="margin-top: 30px; padding-top: 30px; border-top: 2px solid #e2e8f0; text-align: center;">
+      <p style="color: #666; margin-bottom: 15px;">Oppure unisciti con un codice:</p>
+      <div style="display: flex; gap: 10px;">
+        <input 
+          type="text" 
+          [(ngModel)]="sessionCode" 
+          placeholder="Inserisci codice sessione"
+          (keyup.enter)="joinSession()"
+          style="flex: 1;"
+        />
+        <button 
+          class="btn btn-primary" 
+          (click)="joinSession()" 
+          [disabled]="!sessionCode.trim()"
+          style="white-space: nowrap;">
+          🚀 Entra
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
