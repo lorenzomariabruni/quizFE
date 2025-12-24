@@ -41,6 +41,7 @@ export class PlayerComponent implements OnInit, OnDestroy {
   String = String;
 
   private subscriptions: Subscription[] = [];
+  private hasTriedAutoRejoin = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -55,8 +56,8 @@ export class PlayerComponent implements OnInit, OnDestroy {
     const storedSession = this.socketService.getSessionInfo();
     if (storedSession && storedSession.sessionId === this.sessionId) {
       this.playerName = storedSession.playerName;
-      this.joined = true; // Mark as joined since we're recovering
-      console.log('♻️ Recovering previous session for:', this.playerName);
+      console.log('♻️ Found stored session for:', this.playerName);
+      // Don't set joined=true yet, wait for server confirmation
     }
 
     // Monitor connection status
@@ -70,6 +71,9 @@ export class PlayerComponent implements OnInit, OnDestroy {
         if (connected && wasDisconnected) {
           this.reconnectionAttempts = 0;
           console.log('✅ Connection restored!');
+          
+          // If we were already joined and reconnecting, the service will auto-rejoin
+          // Just wait for joined_session event
         } else if (!connected) {
           this.reconnectionAttempts++;
         }
@@ -82,6 +86,7 @@ export class PlayerComponent implements OnInit, OnDestroy {
         console.log('✅ Joined session successfully:', data);
         this.joined = true;
         this.isJoining = false;
+        this.hasTriedAutoRejoin = false;
         this.isReconnected = data.reconnected || false;
         
         if (this.isReconnected) {
@@ -157,7 +162,7 @@ export class PlayerComponent implements OnInit, OnDestroy {
           this.isJoining = false;
           alert('Errore di connessione. Riprova.');
         }
-      }, 5000);
+      }, 10000); // Increased to 10 seconds
     }
   }
 

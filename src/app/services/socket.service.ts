@@ -13,6 +13,7 @@ export class SocketService {
 
   // Store session info for reconnection
   private sessionInfo: { sessionId: string; playerName: string } | null = null;
+  private hasAutoRejoined = false;
 
   constructor() {
     // Use current host instead of hardcoded localhost
@@ -36,21 +37,25 @@ export class SocketService {
       console.log('✅ Connected to server:', this.socket.id);
       this.connectionStatus.next(true);
       
-      // Auto-rejoin session if we have stored info
-      if (this.sessionInfo) {
-        console.log('🔄 Auto-rejoining session:', this.sessionInfo);
+      // Auto-rejoin session ONLY if we have stored info AND this is a reconnection (not first connect)
+      if (this.sessionInfo && this.hasAutoRejoined) {
+        console.log('🔄 Auto-rejoining session after reconnection:', this.sessionInfo);
         setTimeout(() => {
           this.socket.emit('join_session', {
             session_id: this.sessionInfo!.sessionId,
             player_name: this.sessionInfo!.playerName
           });
-        }, 100); // Small delay to ensure socket is fully ready
+        }, 200);
       }
     });
 
     this.socket.on('disconnect', (reason) => {
       console.log('❌ Disconnected from server:', reason);
       this.connectionStatus.next(false);
+      // Mark that we've been connected before (for auto-rejoin logic)
+      if (this.sessionInfo) {
+        this.hasAutoRejoined = true;
+      }
     });
 
     this.socket.on('connect_error', (error) => {
@@ -102,6 +107,7 @@ export class SocketService {
   // Clear session info
   clearSessionInfo(): void {
     this.sessionInfo = null;
+    this.hasAutoRejoined = false;
     localStorage.removeItem('quiz_session');
     console.log('🗑️ Session info cleared');
   }
