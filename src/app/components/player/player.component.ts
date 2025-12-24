@@ -11,6 +11,7 @@ interface Question {
   question: string;
   answers: string[];
   time_limit: number;
+  already_answered?: boolean;
 }
 
 @Component({
@@ -31,6 +32,8 @@ export class PlayerComponent implements OnInit, OnDestroy {
   timeRemaining = 0;
   lastResult: { points_earned: number; is_correct: boolean } | null = null;
   finalLeaderboard: any[] = [];
+  isReconnected = false;
+  connectionStatus = true;
 
   // Expose to template
   String = String;
@@ -45,14 +48,44 @@ export class PlayerComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.sessionId = this.route.snapshot.paramMap.get('sessionId') || '';
 
+    // Check for existing session in localStorage
+    const storedSession = this.socketService.getSessionInfo();
+    if (storedSession && storedSession.sessionId === this.sessionId) {
+      this.playerName = storedSession.playerName;
+      this.joined = true;
+      console.log('Recovering session for:', this.playerName);
+    }
+
+    // Monitor connection status
+    this.subscriptions.push(
+      this.socketService.connectionStatus$.subscribe(connected => {
+        this.connectionStatus = connected;
+        console.log('Connection status:', connected);
+      })
+    );
+
     // Listen to events
     this.subscriptions.push(
-      this.socketService.on<any>('joined_session').subscribe(() => {
+      this.socketService.on<any>('joined_session').subscribe((data) => {
         this.joined = true;
+        this.isReconnected = data.reconnected || false;
+        
+        if (this.isReconnected) {
+          console.log('Reconnected! Game state:', data.game_state);
+          this.gameState = data.game_state || 'waiting';
+          
+          // Show reconnection message
+          if (data.game_state === 'playing') {
+            alert(`Bentornato ${this.playerName}! Sei stato riconnesso al quiz in corso.`);
+          }
+        }
       }),
 
       this.socketService.on<any>('error').subscribe(data => {
-        alert(data.message);
+        console.error('Error from server:', data.message);
+        if (!data.message.includes('Already answered')) {
+          alert(data.message);
+        }
       }),
 
       this.socketService.on<any>('game_started').subscribe(() => {
@@ -62,9 +95,13 @@ export class PlayerComponent implements OnInit, OnDestroy {
       this.socketService.on<Question>('new_question').subscribe(question => {
         this.currentQuestion = question;
         this.selectedAnswer = -1;
-        this.answered = false;
+        this.answered = question.already_answered || false;
         this.timeRemaining = question.time_limit;
         this.lastResult = null;
+        
+        if (this.answered) {
+          console.log('Already answered this question');
+        }
       }),
 
       this.socketService.on<any>('timer_update').subscribe(data => {
@@ -78,6 +115,7 @@ export class PlayerComponent implements OnInit, OnDestroy {
       this.socketService.on<any>('game_over').subscribe(data => {
         this.gameState = 'finished';
         this.finalLeaderboard = data.leaderboard;
+        this.socketService.clearSessionInfo();
       })
     );
   }

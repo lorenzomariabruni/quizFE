@@ -1,4 +1,9 @@
 <div class="container">
+  <!-- Connection Status Indicator -->
+  <div *ngIf="joined && !connectionStatus" style="position: fixed; top: 10px; right: 10px; background: #f56565; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; z-index: 1000;">
+    ⚠️ Riconnessione in corso...
+  </div>
+
   <!-- Join Form -->
   <div *ngIf="!joined" class="card" style="margin-top: 100px;">
     <h1 style="text-align: center; color: #667eea; margin-bottom: 30px;">📱 Unisciti al Quiz</h1>
@@ -22,6 +27,9 @@
   <!-- Waiting State -->
   <div *ngIf="joined && gameState === 'waiting'" class="card" style="margin-top: 100px; text-align: center;">
     <h1 style="color: #667eea; margin-bottom: 20px;">Ciao {{ playerName }}! 👋</h1>
+    <div *ngIf="isReconnected" style="background: #c6f6d5; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+      ✅ Riconnesso con successo!
+    </div>
     <div style="font-size: 24px; margin: 40px 0;">
       <div style="margin-bottom: 20px;">⏳ Attendi che l'host avvii il quiz...</div>
       <div class="timer" style="font-size: 60px; animation: pulse 2s infinite;">∞</div>
