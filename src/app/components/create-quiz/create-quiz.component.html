@@ -6,7 +6,7 @@
         <span class="icon">✏️</span> Crea Nuovo Quiz
       </h1>
       <p class="subtitle" *ngIf="!quizCreated">Compila le informazioni per iniziare</p>
-      <p class="subtitle" *ngIf="quizCreated">Aggiungi domande al tuo quiz</p>
+      <p class="subtitle" *ngIf="quizCreated">Condividi il QR code per aggiungere domande</p>
     </div>
 
     <!-- Status Messages -->
@@ -87,184 +87,52 @@
       </div>
     </div>
 
-    <!-- Step 2: Add Questions -->
-    <div *ngIf="quizCreated" class="step-section">
-      <!-- Quiz Info Banner -->
-      <div class="info-banner">
-        <div class="info-content">
-          <div class="info-text">
-            <h3 class="info-title">🎮 {{ quizTitle }}</h3>
-            <p class="info-subtitle">
-              <span class="badge">{{ questions.length }} domande</span>
-              <span *ngIf="quizDescription" class="info-description">{{ quizDescription }}</span>
-            </p>
-          </div>
-          
-          <!-- QR Code Section -->
-          <div *ngIf="qrCodeUrl" class="qr-section">
-            <p class="qr-label">📱 Condividi</p>
-            <img [src]="qrCodeUrl" alt="QR Code" class="qr-code" />
-            <small class="qr-url">{{ addQuestionUrl }}</small>
-          </div>
+    <!-- Step 2: QR Code and Counter -->
+    <div *ngIf="quizCreated" class="qr-section">
+      <!-- Quiz Info -->
+      <div class="quiz-info-box">
+        <h2 class="quiz-title-display">🎮 {{ quizTitle }}</h2>
+        <p *ngIf="quizDescription" class="quiz-description-display">{{ quizDescription }}</p>
+      </div>
+
+      <!-- QR Code -->
+      <div class="qr-code-container">
+        <div class="qr-code-wrapper">
+          <img [src]="qrCodeUrl" alt="QR Code" class="qr-code-image" />
+        </div>
+        <p class="qr-instruction">📱 Scansiona per aggiungere domande</p>
+        <p class="qr-url">{{ addQuestionUrl }}</p>
+      </div>
+
+      <!-- Question Counter -->
+      <div class="counter-section">
+        <div class="counter-display">
+          <div class="counter-number">{{ questionCount }}</div>
+          <div class="counter-label">{{ questionCount === 1 ? 'Domanda Aggiunta' : 'Domande Aggiunte' }}</div>
+        </div>
+        <div class="counter-animation">
+          <div class="pulse-ring"></div>
         </div>
       </div>
 
-      <!-- Step Header -->
-      <div class="step-header">
-        <span class="step-number">2</span>
-        <h2>Aggiungi Domande</h2>
-      </div>
-
-      <!-- Question Type Selection -->
-      <div class="form-group">
-        <label class="form-label">Tipo Domanda:</label>
-        <div class="button-group">
-          <button 
-            type="button"
-            class="btn-toggle"
-            [class.active]="currentQuestion.type === 'text'"
-            (click)="currentQuestion.type = 'text'; removeImage()"
-            aria-label="Solo testo">
-            <span class="toggle-icon">📝</span>
-            <span>Solo Testo</span>
-          </button>
-          <button 
-            type="button"
-            class="btn-toggle"
-            [class.active]="currentQuestion.type === 'image'"
-            (click)="currentQuestion.type = 'image'"
-            aria-label="Testo con immagine">
-            <span class="toggle-icon">🖼️</span>
-            <span>Testo + Foto</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Image Upload -->
-      <div *ngIf="currentQuestion.type === 'image'" class="form-group">
-        <label class="form-label required">Immagine:</label>
-        
-        <div *ngIf="!currentQuestion.imagePreview" class="image-upload-zone" (click)="fileInput.click()">
-          <div class="upload-icon">📷</div>
-          <p class="upload-text">Clicca per caricare un'immagine</p>
-          <small class="upload-hint">PNG, JPG, GIF (max 5MB)</small>
-        </div>
-
-        <div *ngIf="currentQuestion.imagePreview" class="image-preview-container">
-          <img [src]="currentQuestion.imagePreview" alt="Anteprima immagine" class="image-preview" />
-          <button 
-            type="button"
-            (click)="removeImage()"
-            class="remove-image-btn"
-            aria-label="Rimuovi immagine">
-            ×
-          </button>
-        </div>
-
-        <input 
-          #fileInput
-          type="file" 
-          accept="image/*"
-          (change)="onImageSelect($event)"
-          style="display: none;"
-          aria-label="Seleziona file immagine"
-        />
-      </div>
-
-      <!-- Question Text -->
-      <div class="form-group">
-        <label for="questionText" class="form-label required">Testo Domanda:</label>
-        <textarea 
-          id="questionText"
-          [(ngModel)]="currentQuestion.question"
-          name="questionText"
-          placeholder="Scrivi qui la tua domanda..."
-          rows="3"
-          class="form-input"
-          maxlength="500"
-        ></textarea>
-        <small class="form-hint">Scrivi una domanda chiara e concisa</small>
-      </div>
-
-      <!-- Answers -->
-      <div class="form-group">
-        <label class="form-label required">Risposte:</label>
-        <p class="form-hint" style="margin-bottom: 16px;">💡 Seleziona il cerchio per indicare la risposta corretta</p>
-        
-        <div *ngFor="let answer of currentQuestion.answers; let i = index; trackBy: trackByIndex" 
-             class="answer-input"
-             [class.answer-input-correct]="currentQuestion.correct_answer === i">
-          <input 
-            type="radio" 
-            [id]="'correct-' + i"
-            [name]="'correct'"
-            [checked]="currentQuestion.correct_answer === i"
-            (change)="currentQuestion.correct_answer = i"
-            class="answer-radio"
-            [attr.aria-label]="'Seleziona risposta ' + String.fromCharCode(65 + i) + ' come corretta'"
-          />
-          <label [for]="'correct-' + i" class="answer-letter" [class.answer-letter-correct]="currentQuestion.correct_answer === i">
-            {{ String.fromCharCode(65 + i) }}
-          </label>
-          <input 
-            type="text"
-            [id]="'answer-' + i"
-            [(ngModel)]="currentQuestion.answers[i]"
-            [name]="'answer-' + i"
-            [placeholder]="'Risposta ' + (i + 1)"
-            class="answer-text-input"
-            maxlength="200"
-            [attr.aria-label]="'Testo risposta ' + String.fromCharCode(65 + i)"
-          />
-          <span *ngIf="currentQuestion.correct_answer === i" class="check-mark" aria-hidden="true">
-            ✓
-          </span>
-        </div>
-      </div>
-
-      <!-- Add Question Button -->
-      <button 
-        type="button"
-        class="btn btn-success btn-large" 
-        (click)="addQuestion()" 
-        [disabled]="loading">
-        <span>{{ loading ? '⏳ Aggiunta in corso...' : '➕ Aggiungi Domanda' }}</span>
-      </button>
-
-      <!-- Questions List -->
-      <div *ngIf="questions.length > 0" class="questions-list">
-        <h3 class="section-title">
-          <span>📋 Domande Aggiunte</span>
-          <span class="badge badge-primary">{{ questions.length }}</span>
-        </h3>
-        
-        <div *ngFor="let q of questions; let i = index; trackBy: trackByIndex" class="question-card">
-          <div class="question-card-header">
-            <span class="question-type-badge" [class.image-badge]="q.type === 'image'">
-              {{ q.type === 'image' ? '🖼️ Immagine' : '📝 Testo' }}
-            </span>
-            <span class="question-number">Domanda {{ i + 1 }}</span>
-          </div>
-          <p class="question-text">{{ q.question }}</p>
-          <div class="question-correct-answer">
-            <strong>✅ Risposta corretta:</strong> 
-            <span class="correct-label">{{ String.fromCharCode(65 + q.correct_answer) }}</span>
-            {{ q.answers[q.correct_answer] }}
-          </div>
-        </div>
+      <!-- Info Box -->
+      <div class="info-box">
+        <p class="info-text">
+          <span class="info-icon">💡</span>
+          Il contatore si aggiorna automaticamente ogni volta che viene aggiunta una domanda da qualsiasi dispositivo.
+        </p>
       </div>
 
       <!-- Action Buttons -->
       <div class="action-buttons">
         <button type="button" class="btn btn-secondary" (click)="goBack()">
-          <span>← Esci</span>
+          <span>← Annulla</span>
         </button>
         <button 
           type="button"
           class="btn btn-primary btn-large" 
-          (click)="finishQuiz()" 
-          [disabled]="questions.length === 0">
-          <span>✅ Completa Quiz ({{ questions.length }} domande)</span>
+          (click)="finishQuiz()">
+          <span>✅ Completa Quiz</span>
         </button>
       </div>
     </div>
