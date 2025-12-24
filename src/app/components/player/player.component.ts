@@ -40,6 +40,10 @@ export class PlayerComponent implements OnInit, OnDestroy {
   reconnected = false;
   showConnectionBanner = false;
   connectionStatus: 'connecting' | 'connected' | 'disconnected' = 'connecting';
+  
+  // Results display
+  showingResults = false;
+  correctAnswer: number | null = null;
 
   // Expose to template
   String = String;
@@ -160,6 +164,8 @@ export class PlayerComponent implements OnInit, OnDestroy {
         this.answered = question.already_answered || false;
         this.pointsEarned = 0;
         this.timeRemaining = question.time_limit;
+        this.showingResults = false;
+        this.correctAnswer = null;
 
         // Build full image URL if needed
         if (question.type === 'image' && question.image_url) {
@@ -180,21 +186,29 @@ export class PlayerComponent implements OnInit, OnDestroy {
       })
     );
 
-    // Answer submitted
+    // Answer submitted - NO correctness info
     this.subscriptions.push(
       this.socketService.on<any>('answer_submitted').subscribe(data => {
         console.log('✅ Answer submitted:', data);
         this.answered = true;
         this.pointsEarned = data.points_earned;
-        this.totalScore += data.points_earned;
+        // Don't update totalScore here - wait for results
       })
     );
 
-    // Question results
+    // Question results - NOW we show correctness
     this.subscriptions.push(
       this.socketService.on<any>('question_results').subscribe(data => {
         console.log('📈 Question results:', data);
+        this.showingResults = true;
+        this.correctAnswer = data.correct_answer;
         this.leaderboard = data.leaderboard;
+        
+        // Update total score from leaderboard
+        const myResult = this.leaderboard.find(p => p.name === this.playerName);
+        if (myResult) {
+          this.totalScore = myResult.score;
+        }
       })
     );
 
@@ -227,15 +241,23 @@ export class PlayerComponent implements OnInit, OnDestroy {
   }
 
   selectAnswer(index: number): void {
-    if (!this.answered) {
+    if (!this.answered && !this.showingResults) {
       this.selectedAnswer = index;
     }
   }
 
   submitAnswer(): void {
-    if (this.selectedAnswer !== null && !this.answered) {
+    if (this.selectedAnswer !== null && !this.answered && !this.showingResults) {
       this.socketService.submitAnswer(this.selectedAnswer);
     }
+  }
+
+  isCorrectAnswer(index: number): boolean {
+    return this.showingResults && this.correctAnswer === index;
+  }
+
+  isWrongAnswer(index: number): boolean {
+    return this.showingResults && this.selectedAnswer === index && this.correctAnswer !== index;
   }
 
   goHome(): void {

@@ -1,178 +1,151 @@
-<div class="container">
+<div class="player-container">
   <!-- Connection Banner -->
-  <div *ngIf="showConnectionBanner" 
-       style="position: fixed; top: 0; left: 0; right: 0; background: #fed7d7; padding: 12px; text-align: center; z-index: 1000; border-bottom: 2px solid #fc8181;">
-    <p style="margin: 0; color: #c53030; font-weight: 600;">
-      ❌ Connessione persa. Riconnessione in corso...
-    </p>
+  <div *ngIf="showConnectionBanner" class="connection-banner">
+    <p>⚠️ Connessione persa. Tentativo di riconnessione...</p>
   </div>
 
   <!-- Join Screen -->
-  <div *ngIf="!joined" class="card" style="margin-top: 50px;">
-    <h1 style="text-align: center; color: #667eea; margin-bottom: 30px;">
-      📱 Unisciti al Quiz
-    </h1>
+  <div *ngIf="!joined" class="join-screen">
+    <div class="join-card">
+      <h1>🎮 Unisciti al Quiz</h1>
+      <p class="session-id">Sessione: <strong>{{ sessionId }}</strong></p>
 
-    <div style="text-align: center; background: #f7faff; padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 2px solid #667eea;">
-      <p style="color: #666; margin-bottom: 10px; font-weight: 600;">Codice Sessione:</p>
-      <h2 style="color: #667eea; margin: 0; font-size: 36px; font-weight: 800;">
-        {{ sessionId }}
-      </h2>
-    </div>
+      <div *ngIf="error" class="error-message">
+        ❌ {{ error }}
+      </div>
 
-    <div *ngIf="error" style="background: #fed7d7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-      <p style="color: #c53030; margin: 0;">❌ {{ error }}</p>
-    </div>
-
-    <div style="margin-bottom: 20px;">
-      <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #2d3748;">
-        Il tuo nome:
-      </label>
-      <input 
-        type="text" 
-        [(ngModel)]="playerName" 
+      <input
+        type="text"
+        [(ngModel)]="playerName"
         placeholder="Inserisci il tuo nome"
         (keyup.enter)="joinSession()"
         [disabled]="joining"
-        style="width: 100%; font-size: 18px;"
+        class="name-input"
       />
-    </div>
 
-    <button 
-      class="btn btn-primary" 
-      (click)="joinSession()" 
-      [disabled]="!playerName.trim() || joining"
-      style="width: 100%; font-size: 18px; padding: 16px;">
-      {{ joining ? '⏳ Connessione...' : '🚀 Entra nel Gioco' }}
-    </button>
+      <button
+        (click)="joinSession()"
+        [disabled]="!playerName.trim() || joining"
+        class="join-button">
+        {{ joining ? '⏳ Connessione...' : '🚀 Inizia!' }}
+      </button>
+    </div>
   </div>
 
   <!-- Waiting Screen -->
-  <div *ngIf="joined && gameState === 'waiting'" class="card" style="margin-top: 50px;">
-    <h1 style="text-align: center; color: #667eea; margin-bottom: 20px;">
-      🎉 Benvenuto, {{ playerName }}!
-    </h1>
-
-    <div *ngIf="reconnected" style="background: #c6f6d5; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
-      <p style="color: #22543d; margin: 0; font-weight: 600;">
-        🔄 Riconnesso! Punteggio: {{ totalScore | number:'1.0-0' }} pt
-      </p>
-    </div>
-
-    <div style="text-align: center; padding: 50px 20px;">
-      <div style="font-size: 80px; margin-bottom: 20px; animation: pulse 2s infinite;">⏳</div>
-      <h2 style="color: #2d3748; margin-bottom: 10px;">In attesa dell'host...</h2>
-      <p style="color: #666;">Il quiz inizierà a breve!</p>
+  <div *ngIf="joined && gameState === 'waiting'" class="waiting-screen">
+    <div class="waiting-card">
+      <h1>⏳ In Attesa...</h1>
+      <p class="player-name">Ciao, <strong>{{ playerName }}</strong>!</p>
+      <p class="waiting-message">Aspettando che l'host inizi il gioco...</p>
+      <div class="spinner"></div>
     </div>
   </div>
 
   <!-- Playing Screen -->
-  <div *ngIf="joined && gameState === 'playing' && currentQuestion" class="card" style="margin-top: 50px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
-      <div>
-        <span style="color: #667eea; font-weight: 600; display: block;">
-          Domanda {{ currentQuestion.question_number }} / {{ currentQuestion.total_questions }}
-        </span>
-        <span style="color: #666; font-size: 14px;">
-          Punteggio: {{ totalScore | number:'1.0-0' }} pt
-        </span>
+  <div *ngIf="joined && gameState === 'playing' && currentQuestion" class="playing-screen">
+    <!-- Header -->
+    <div class="game-header">
+      <div class="score-display">
+        <span class="score-label">Punteggio</span>
+        <span class="score-value">{{ totalScore }}</span>
+      </div>
+      <div class="question-counter">
+        Domanda {{ currentQuestion.question_number }} / {{ currentQuestion.total_questions }}
       </div>
       <div class="timer" [class.timer-warning]="timeRemaining <= 3">
         ⏱️ {{ timeRemaining }}s
       </div>
     </div>
 
-    <!-- Image if present -->
-    <div *ngIf="currentQuestion.type === 'image' && currentQuestion.image_url" 
-         style="text-align: center; margin-bottom: 30px;">
-      <img 
-        [src]="currentQuestion.image_url" 
-        alt="Question image"
-        style="max-width: 100%; max-height: 300px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+    <!-- Question Image (if exists) -->
+    <div *ngIf="currentQuestion.type === 'image' && currentQuestion.image_url" class="question-image-container">
+      <img [src]="currentQuestion.image_url" alt="Question image" class="question-image" />
     </div>
 
-    <h2 style="color: #2d3748; margin-bottom: 30px; text-align: center;">
-      {{ currentQuestion.question }}
-    </h2>
-
-    <div *ngIf="answered" style="text-align: center; background: #f7faff; padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 2px solid #667eea;">
-      <p style="margin: 0; color: #667eea; font-weight: 600; font-size: 18px;">
-        {{ pointsEarned >= 0 ? '✅' : '❌' }} 
-        {{ pointsEarned >= 0 ? '+' : '' }}{{ pointsEarned | number:'1.0-0' }} punti
-      </p>
-      <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">
-        Aspetta i risultati...
-      </p>
+    <!-- Question Text -->
+    <div class="question-card">
+      <h2 class="question-text">{{ currentQuestion.question }}</h2>
     </div>
 
-    <div class="answers-grid" *ngIf="!answered">
+    <!-- Answer Status (after submission, before results) -->
+    <div *ngIf="answered && !showingResults" class="answer-status">
+      <div class="status-card waiting-results">
+        <div class="status-icon">⏳</div>
+        <p class="status-message">Risposta inviata!</p>
+        <p class="status-detail">Attendere i risultati...</p>
+      </div>
+    </div>
+
+    <!-- Answers Grid -->
+    <div class="answers-grid" [class.disabled]="answered">
       <button
         *ngFor="let answer of currentQuestion.answers; let i = index"
         class="answer-button"
-        [class.selected]="selectedAnswer === i"
-        (click)="selectAnswer(i)"
-        [disabled]="answered">
+        [class.selected]="selectedAnswer === i && !showingResults"
+        [class.correct]="isCorrectAnswer(i)"
+        [class.wrong]="isWrongAnswer(i)"
+        [disabled]="answered"
+        (click)="selectAnswer(i)">
         <span class="answer-letter">{{ String.fromCharCode(65 + i) }}</span>
         <span class="answer-text">{{ answer }}</span>
+        <span *ngIf="isCorrectAnswer(i)" class="result-icon">✅</span>
+        <span *ngIf="isWrongAnswer(i)" class="result-icon">❌</span>
       </button>
     </div>
 
-    <button 
+    <!-- Submit Button -->
+    <button
       *ngIf="!answered"
-      class="btn btn-primary" 
-      (click)="submitAnswer()" 
+      class="submit-button"
       [disabled]="selectedAnswer === null"
-      style="width: 100%; margin-top: 20px; font-size: 18px; padding: 16px;">
-      ✅ Conferma Risposta
+      (click)="submitAnswer()">
+      ✅ Invia Risposta
     </button>
+
+    <!-- Results Display -->
+    <div *ngIf="showingResults" class="results-display">
+      <div class="points-earned" [class.no-points]="pointsEarned === 0">
+        <span class="points-value">{{ pointsEarned > 0 ? '+' + pointsEarned : pointsEarned }}</span>
+        <span class="points-label">punti</span>
+      </div>
+    </div>
   </div>
 
   <!-- Finished Screen -->
-  <div *ngIf="joined && gameState === 'finished'" class="card" style="margin-top: 50px;">
-    <h1 style="text-align: center; color: #667eea; margin-bottom: 30px;">
-      🏆 Quiz Terminato!
-    </h1>
+  <div *ngIf="joined && gameState === 'finished'" class="finished-screen">
+    <div class="finished-card">
+      <h1>🏆 Quiz Completato!</h1>
 
-    <div style="text-align: center; background: #f7faff; padding: 30px; border-radius: 12px; margin-bottom: 30px; border: 2px solid #667eea;">
-      <p style="color: #666; margin-bottom: 10px; font-weight: 600;">Il Tuo Punteggio Finale:</p>
-      <h2 style="color: #667eea; margin: 0; font-size: 48px; font-weight: 800;">
-        {{ totalScore | number:'1.0-0' }} pt
-      </h2>
-    </div>
-
-    <h3 style="color: #667eea; margin-bottom: 20px; text-align: center;">
-      Classifica Finale
-    </h3>
-
-    <div *ngFor="let entry of leaderboard; let i = index" 
-         class="leaderboard-item"
-         [class.highlight]="entry.name === playerName"
-         [class.winner]="i === 0">
-      <span class="position" [class.gold]="i === 0" [class.silver]="i === 1" [class.bronze]="i === 2">
-        {{ i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1) }}
-      </span>
-      <div style="flex: 1;">
-        <div class="name">{{ entry.name }}</div>
-        <div style="color: #666; font-size: 14px;">{{ entry.correct_answers }} risposte corrette</div>
+      <div class="final-score">
+        <p class="score-label">Punteggio Finale</p>
+        <p class="score-value">{{ totalScore }}</p>
       </div>
-      <span class="score">{{ entry.score | number:'1.0-0' }} pt</span>
-    </div>
 
-    <button class="btn btn-primary" (click)="goHome()" style="width: 100%; margin-top: 30px; font-size: 18px; padding: 16px;">
-      🏠 Torna alla Home
-    </button>
+      <h2 class="leaderboard-title">🏅 Classifica</h2>
+      <div class="leaderboard">
+        <div
+          *ngFor="let player of leaderboard; let i = index"
+          class="leaderboard-item"
+          [class.highlight]="player.name === playerName">
+          <span class="position" [ngClass]="{
+            'gold': i === 0,
+            'silver': i === 1,
+            'bronze': i === 2
+          }">
+            {{ i + 1 }}
+          </span>
+          <span class="name">{{ player.name }}</span>
+          <span class="stats">
+            <span class="correct">✅ {{ player.correct_answers }}</span>
+            <span class="score">{{ player.score }} pt</span>
+          </span>
+        </div>
+      </div>
+
+      <button class="home-button" (click)="goHome()">
+        🏠 Torna alla Home
+      </button>
+    </div>
   </div>
 </div>
-
-<style>
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.1);
-    opacity: 0.8;
-  }
-}
-</style>
