@@ -1,9 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import * as QRCode from 'qrcode';
 
 interface Question {
   id?: string;
@@ -16,24 +15,16 @@ interface Question {
 }
 
 @Component({
-  selector: 'app-create-quiz',
+  selector: 'app-add-question',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './create-quiz.component.html',
-  styleUrls: ['./create-quiz.component.scss']
+  templateUrl: './add-question.component.html',
+  styleUrls: ['./add-question.component.scss']
 })
-export class CreateQuizComponent implements OnInit {
-  // Quiz metadata
+export class AddQuestionComponent implements OnInit {
   quizName = '';
   quizTitle = '';
   quizDescription = '';
-  quizCreated = false;
-  createdQuizName = '';
-
-  // QR Code for sharing
-  qrCodeUrl = '';
-  addQuestionUrl = '';
-  networkIp = '';
 
   // Current question being added
   currentQuestion: Question = {
@@ -43,11 +34,12 @@ export class CreateQuizComponent implements OnInit {
     type: 'text'
   };
 
-  // Questions added
-  questions: Question[] = [];
+  // Questions added in this session
+  questionsAdded = 0;
 
   // UI state
   loading = false;
+  loadingQuiz = true;
   error = '';
   success = '';
 
@@ -55,82 +47,44 @@ export class CreateQuizComponent implements OnInit {
   String = String;
 
   constructor(
+    private route: ActivatedRoute,
     private router: Router,
     private http: HttpClient
   ) {}
 
   async ngOnInit() {
-    // Don't auto-detect IP, will prompt when needed
+    // Get quiz name from URL parameter
+    this.route.queryParams.subscribe(params => {
+      this.quizName = params['quiz'];
+      if (this.quizName) {
+        this.loadQuizInfo();
+      } else {
+        this.error = 'Nome quiz mancante. Impossibile continuare.';
+        this.loadingQuiz = false;
+      }
+    });
+  }
+
+  loadQuizInfo(): void {
+    const host = window.location.hostname;
+    const apiUrl = `http://${host}:8000/api/quizzes/${this.quizName}`;
+
+    this.http.get<any>(apiUrl).subscribe({
+      next: (response) => {
+        this.quizTitle = response.title || this.quizName;
+        this.quizDescription = response.description || '';
+        this.loadingQuiz = false;
+      },
+      error: (err) => {
+        this.error = 'Quiz non trovato. Verifica il QR code.';
+        this.loadingQuiz = false;
+      }
+    });
   }
 
   // TrackBy function for ngFor performance
   trackByIndex(index: number): number {
     return index;
-  }
-
-  async createQuiz(): Promise<void> {
-    if (!this.quizName.trim() || !this.quizTitle.trim()) {
-      this.error = 'Nome e titolo quiz sono obbligatori';
-      return;
-    }
-
-    this.loading = true;
-    this.error = '';
-
-    const host = window.location.hostname;
-    const apiUrl = `http://${host}:8000/api/quizzes`;
-
-    const formData = new FormData();
-    formData.append('name', this.quizName.trim());
-    formData.append('title', this.quizTitle.trim());
-    formData.append('description', this.quizDescription.trim());
-
-    this.http.post<{name: string, message: string}>(apiUrl, formData).subscribe({
-      next: async (response) => {
-        this.quizCreated = true;
-        this.createdQuizName = response.name;
-        this.success = 'Quiz creato con successo! Ora puoi aggiungere le domande.';
-        this.loading = false;
-
-        // Prompt for IP to generate QR code
-        await this.generateQRCode();
-      },
-      error: (err) => {
-        this.error = err.error?.detail || 'Errore nella creazione del quiz';
-        this.loading = false;
-      }
-    });
-  }
-
-  private async generateQRCode(): Promise<void> {
-    // Always prompt for IP
-    this.networkIp = await this.promptForIp();
-    
-    const port = window.location.port ? `:${window.location.port}` : '';
-    // Changed to point to /add-question instead of /create-quiz
-    this.addQuestionUrl = `http://${this.networkIp}${port}/add-question?quiz=${this.createdQuizName}`;
-    this.qrCodeUrl = await QRCode.toDataURL(this.addQuestionUrl, { 
-      width: 300,
-      margin: 2,
-      color: {
-        dark: '#667eea',
-        light: '#ffffff'
-      }
-    });
-  }
-
-  private promptForIp(): string {
-    const defaultIp = window.location.hostname;
-    const manualIp = prompt(
-      '🌐 Inserisci l\'IP di questa macchina per generare il QR code\n\n' +
-      'Questo permetterà ad altri dispositivi di accedere alla pagina.\n\n' +
-      'Per trovare il tuo IP:\n' +
-      '• Mac/Linux: ifconfig | grep "inet "\n' +
-      '• Windows: ipconfig\n\n' +
-      'Lascia vuoto per usare: ' + defaultIp,
-      defaultIp
-    );
-    return manualIp && manualIp.trim() ? manualIp.trim() : defaultIp;
   }
 
   onImageSelect(event: Event): void {
@@ -194,7 +148,7 @@ export class CreateQuizComponent implements OnInit {
     this.loading = true;
 
     const host = window.location.hostname;
-    const apiUrl = `http://${host}:8000/api/quizzes/${this.createdQuizName}/questions`;
+    const apiUrl = `http://${host}:8000/api/quizzes/${this.quizName}/questions`;
 
     const formData = new FormData();
     formData.append('question_text', this.currentQuestion.question.trim());
@@ -211,8 +165,8 @@ export class CreateQuizComponent implements OnInit {
 
     this.http.post<any>(apiUrl, formData).subscribe({
       next: (response) => {
-        this.questions.push({...this.currentQuestion, id: response.question_id});
-        this.success = `✅ Domanda ${this.questions.length} aggiunta con successo!`;
+        this.questionsAdded++;
+        this.success = `✅ Domanda ${this.questionsAdded} aggiunta con successo!`;
         
         // Reset form
         this.currentQuestion = {
@@ -233,25 +187,15 @@ export class CreateQuizComponent implements OnInit {
     });
   }
 
-  finishQuiz(): void {
-    if (this.questions.length === 0) {
-      this.error = 'Aggiungi almeno una domanda prima di completare il quiz';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-
-    if (confirm(`Hai aggiunto ${this.questions.length} domande. Confermi di voler completare il quiz?`)) {
-      this.router.navigate(['/']);
-    }
-  }
-
-  goBack(): void {
-    const message = this.quizCreated 
-      ? `Sei sicuro di voler uscire? Hai già creato il quiz "${this.quizTitle}" con ${this.questions.length} domande.`
-      : 'Sei sicuro di voler annullare? I dati inseriti andranno persi.';
-    
-    if (confirm(message)) {
-      this.router.navigate(['/']);
+  finishAdding(): void {
+    if (this.questionsAdded === 0) {
+      if (confirm('Non hai aggiunto nessuna domanda. Vuoi davvero uscire?')) {
+        this.router.navigate(['/']);
+      }
+    } else {
+      if (confirm(`Hai aggiunto ${this.questionsAdded} domande. Confermi di voler concludere?`)) {
+        this.router.navigate(['/']);
+      }
     }
   }
 }

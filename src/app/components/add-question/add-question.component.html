@@ -1,0 +1,164 @@
+<div class="container">
+  <div class="card add-question-card">
+    <!-- Loading Quiz Info -->
+    <div *ngIf="loadingQuiz" class="loading-section">
+      <div class="loading-spinner">⏳</div>
+      <p>Caricamento quiz...</p>
+    </div>
+
+    <!-- Main Content -->
+    <div *ngIf="!loadingQuiz">
+      <!-- Header -->
+      <div class="header-section">
+        <h1 class="main-title">
+          <span class="icon">➕</span> Aggiungi Domande
+        </h1>
+        <div class="quiz-info">
+          <h2 class="quiz-title">🎮 {{ quizTitle }}</h2>
+          <p *ngIf="quizDescription" class="quiz-description">{{ quizDescription }}</p>
+          <span class="badge">{{ questionsAdded }} domande aggiunte</span>
+        </div>
+      </div>
+
+      <!-- Status Messages -->
+      <div *ngIf="error" class="alert alert-error" role="alert">
+        <span class="alert-icon">⚠️</span>
+        <span>{{ error }}</span>
+      </div>
+
+      <div *ngIf="success" class="alert alert-success" role="alert">
+        <span class="alert-icon">✅</span>
+        <span>{{ success }}</span>
+      </div>
+
+      <!-- Question Type Selection -->
+      <div class="form-group">
+        <label class="form-label">Tipo Domanda:</label>
+        <div class="button-group">
+          <button 
+            type="button"
+            class="btn-toggle"
+            [class.active]="currentQuestion.type === 'text'"
+            (click)="currentQuestion.type = 'text'; removeImage()"
+            aria-label="Solo testo">
+            <span class="toggle-icon">📝</span>
+            <span>Solo Testo</span>
+          </button>
+          <button 
+            type="button"
+            class="btn-toggle"
+            [class.active]="currentQuestion.type === 'image'"
+            (click)="currentQuestion.type = 'image'"
+            aria-label="Testo con immagine">
+            <span class="toggle-icon">🖼️</span>
+            <span>Testo + Foto</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Image Upload -->
+      <div *ngIf="currentQuestion.type === 'image'" class="form-group">
+        <label class="form-label required">Immagine:</label>
+        
+        <div *ngIf="!currentQuestion.imagePreview" class="image-upload-zone" (click)="fileInput.click()">
+          <div class="upload-icon">📷</div>
+          <p class="upload-text">Clicca per caricare un'immagine</p>
+          <small class="upload-hint">PNG, JPG, GIF (max 5MB)</small>
+        </div>
+
+        <div *ngIf="currentQuestion.imagePreview" class="image-preview-container">
+          <img [src]="currentQuestion.imagePreview" alt="Anteprima immagine" class="image-preview" />
+          <button 
+            type="button"
+            (click)="removeImage()"
+            class="remove-image-btn"
+            aria-label="Rimuovi immagine">
+            ×
+          </button>
+        </div>
+
+        <input 
+          #fileInput
+          type="file" 
+          accept="image/*"
+          (change)="onImageSelect($event)"
+          style="display: none;"
+          aria-label="Seleziona file immagine"
+        />
+      </div>
+
+      <!-- Question Text -->
+      <div class="form-group">
+        <label for="questionText" class="form-label required">Testo Domanda:</label>
+        <textarea 
+          id="questionText"
+          [(ngModel)]="currentQuestion.question"
+          name="questionText"
+          placeholder="Scrivi qui la tua domanda..."
+          rows="3"
+          class="form-input"
+          maxlength="500"
+        ></textarea>
+        <small class="form-hint">Scrivi una domanda chiara e concisa</small>
+      </div>
+
+      <!-- Answers -->
+      <div class="form-group">
+        <label class="form-label required">Risposte:</label>
+        <p class="form-hint" style="margin-bottom: 16px;">💡 Seleziona il cerchio per indicare la risposta corretta</p>
+        
+        <div *ngFor="let answer of currentQuestion.answers; let i = index; trackBy: trackByIndex" 
+             class="answer-input"
+             [class.answer-input-correct]="currentQuestion.correct_answer === i">
+          <input 
+            type="radio" 
+            [id]="'correct-' + i"
+            [name]="'correct'"
+            [checked]="currentQuestion.correct_answer === i"
+            (change)="currentQuestion.correct_answer = i"
+            class="answer-radio"
+            [attr.aria-label]="'Seleziona risposta ' + String.fromCharCode(65 + i) + ' come corretta'"
+          />
+          <label [for]="'correct-' + i" class="answer-letter" [class.answer-letter-correct]="currentQuestion.correct_answer === i">
+            {{ String.fromCharCode(65 + i) }}
+          </label>
+          <input 
+            type="text"
+            [id]="'answer-' + i"
+            [(ngModel)]="currentQuestion.answers[i]"
+            [name]="'answer-' + i"
+            [placeholder]="'Risposta ' + (i + 1)"
+            class="answer-text-input"
+            maxlength="200"
+            [attr.aria-label]="'Testo risposta ' + String.fromCharCode(65 + i)"
+          />
+          <span *ngIf="currentQuestion.correct_answer === i" class="check-mark" aria-hidden="true">
+            ✓
+          </span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <button 
+          type="button"
+          class="btn btn-success" 
+          (click)="addQuestion()" 
+          [disabled]="loading">
+          <span>{{ loading ? '⏳ Aggiunta...' : '➕ Aggiungi Domanda' }}</span>
+        </button>
+        <button 
+          type="button"
+          class="btn btn-primary" 
+          (click)="finishAdding()">
+          <span>✅ Concludi Inserimento</span>
+        </button>
+      </div>
+
+      <!-- Info Footer -->
+      <div class="info-footer">
+        <p>📱 Puoi continuare ad aggiungere domande da questo dispositivo o condividere il QR code con altri.</p>
+      </div>
+    </div>
+  </div>
+</div>
