@@ -8,7 +8,12 @@
     <div class="qr-code">
       <h3>Scansiona il QR Code per unirti:</h3>
       <img [src]="qrCodeUrl" alt="QR Code" style="margin: 20px auto; display: block;" />
-      <p style="margin-top: 10px; color: #666; word-break: break-all;">Oppure vai su: <strong>{{ joinUrl }}</strong></p>
+      <p style="margin-top: 10px; color: #666; word-break: break-all; padding: 0 20px;">
+        Oppure vai su: <strong style="color: #667eea;">{{ joinUrl }}</strong>
+      </p>
+      <p *ngIf="networkIp" style="margin-top: 5px; color: #999; font-size: 14px;">
+        IP rilevato: {{ networkIp }}
+      </p>
     </div>
 
     <div style="margin: 30px 0;">

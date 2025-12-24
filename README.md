@@ -20,6 +20,7 @@ Pagina iniziale con due opzioni:
 **Funzionalità**:
 - Crea sessione con codice univoco
 - Genera QR code per accesso rapido
+- **Rileva automaticamente IP di rete** (usando WebRTC)
 - Visualizza giocatori connessi in tempo reale
 - Controlla l'avvio del quiz
 - Mostra domande e timer
@@ -96,15 +97,18 @@ private readonly serverUrl = 'http://localhost:8000'; // Cambia se necessario
 
 ### Avvio Applicazione
 
-```bash
-# Development mode con live reload
-npm start
+**IMPORTANTE**: Per permettere l'accesso da altri dispositivi sulla rete locale, avvia con:
 
-# Oppure
-ng serve
+```bash
+# Esponi su tutte le interfacce di rete
+ng serve --host 0.0.0.0
 ```
 
-L'applicazione sarà disponibile su: http://localhost:4200
+L'applicazione sarà disponibile su:
+- Local: http://localhost:4200
+- Network: http://[TUO_IP]:4200 (es. http://192.168.1.100:4200)
+
+**Il QR code verrà generato automaticamente con l'IP di rete rilevato!**
 
 ### Build per Produzione
 
@@ -114,6 +118,17 @@ npm run build
 
 # Output in dist/quiz-fe/
 ```
+
+## Rilevamento IP di Rete
+
+Il componente Host usa **WebRTC** per rilevare automaticamente l'IP locale della macchina sulla rete:
+
+- Rileva IP privato (es. 192.168.x.x, 10.x.x.x)
+- Esclude automaticamente localhost (127.0.0.1)
+- Fallback a hostname se il rilevamento fallisce
+- Timeout di 2 secondi per garantire performance
+
+Questo permette ai dispositivi mobili sulla stessa rete di connettersi facilmente scansionando il QR code!
 
 ## Struttura Progetto
 
@@ -231,6 +246,12 @@ await QRCode.toDataURL(joinUrl, {
 3. Verifica CORS nel backend
 4. Ispeziona console browser per errori
 
+### QR Code mostra localhost
+1. **Assicurati di avviare con**: `ng serve --host 0.0.0.0`
+2. Verifica che il firewall non blocchi la porta 4200
+3. Controlla la console per l'IP rilevato
+4. Prova a ricaricare la pagina host
+
 ### QR Code non appare
 - Verifica installazione libreria `qrcode`
 - Controlla console per errori
@@ -240,6 +261,12 @@ await QRCode.toDataURL(joinUrl, {
 - Verifica `styles.scss` sia incluso in `angular.json`
 - Esegui `ng serve` dopo modifiche
 - Pulisci cache browser
+
+### IP non viene rilevato correttamente
+- WebRTC potrebbe essere bloccato dal browser
+- Prova ad aprire in modalità incognito
+- Verifica permessi browser
+- Come fallback, modifica manualmente `networkIp` nel codice
 
 ## Performance
 

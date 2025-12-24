@@ -34,6 +34,7 @@ export class HostComponent implements OnInit, OnDestroy {
   correctAnswer = -1;
   qrCodeUrl = '';
   joinUrl = '';
+  networkIp = '';
 
   // Expose to template
   String = String;
@@ -49,10 +50,12 @@ export class HostComponent implements OnInit, OnDestroy {
     // Create session
     this.socketService.createSession(this.sessionId);
 
-    // Get network IP and generate QR Code
-    const host = window.location.hostname;
+    // Get network IP
+    await this.detectNetworkIp();
+
+    // Generate QR Code with network IP
     const port = window.location.port ? `:${window.location.port}` : '';
-    this.joinUrl = `http://${host}${port}/play/${this.sessionId}`;
+    this.joinUrl = `http://${this.networkIp}${port}/play/${this.sessionId}`;
     
     this.qrCodeUrl = await QRCode.toDataURL(this.joinUrl, { width: 300 });
 
@@ -90,6 +93,51 @@ export class HostComponent implements OnInit, OnDestroy {
         this.leaderboard = data.leaderboard;
       })
     );
+  }
+
+  private async detectNetworkIp(): Promise<void> {
+    // Try to detect network IP using WebRTC
+    return new Promise((resolve) => {
+      const pc = new RTCPeerConnection({ iceServers: [] });
+      pc.createDataChannel('');
+      
+      pc.createOffer().then(offer => pc.setLocalDescription(offer));
+      
+      pc.onicecandidate = (ice) => {
+        if (!ice || !ice.candidate || !ice.candidate.candidate) {
+          pc.close();
+          resolve();
+          return;
+        }
+        
+        const ipRegex = /([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/;
+        const ipMatch = ipRegex.exec(ice.candidate.candidate);
+        
+        if (ipMatch && ipMatch[1]) {
+          const detectedIp = ipMatch[1];
+          // Skip localhost and 0.0.0.0
+          if (detectedIp !== '127.0.0.1' && detectedIp !== '0.0.0.0') {
+            this.networkIp = detectedIp;
+            pc.close();
+            resolve();
+          }
+        }
+      };
+      
+      // Fallback dopo 2 secondi
+      setTimeout(() => {
+        if (!this.networkIp) {
+          // Usa l'hostname come fallback
+          this.networkIp = window.location.hostname;
+          if (this.networkIp === 'localhost' || this.networkIp === '127.0.0.1') {
+            this.networkIp = 'localhost';
+            console.warn('Non riesco a rilevare l\'IP di rete. Assicurati di avviare con: ng serve --host 0.0.0.0');
+          }
+        }
+        pc.close();
+        resolve();
+      }, 2000);
+    });
   }
 
   startGame(): void {
