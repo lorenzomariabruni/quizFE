@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { SocketService } from '../../services/socket.service';
 import { Subscription } from 'rxjs';
 
@@ -12,6 +12,8 @@ interface Question {
   answers: string[];
   time_limit: number;
   already_answered?: boolean;
+  type?: string;
+  image_url?: string;
 }
 
 @Component({
@@ -27,163 +29,221 @@ export class PlayerComponent implements OnInit, OnDestroy {
   joined = false;
   gameState: 'waiting' | 'playing' | 'finished' = 'waiting';
   currentQuestion: Question | null = null;
-  selectedAnswer = -1;
+  selectedAnswer: number | null = null;
   answered = false;
+  pointsEarned = 0;
+  totalScore = 0;
+  leaderboard: any[] = [];
   timeRemaining = 0;
-  lastResult: { points_earned: number; is_correct: boolean } | null = null;
-  finalLeaderboard: any[] = [];
-  isReconnected = false;
-  connectionStatus = true;
-  isJoining = false;
+  error = '';
+  joining = false;
+  reconnected = false;
+  showConnectionBanner = false;
+  connectionStatus: 'connecting' | 'connected' | 'disconnected' = 'connecting';
 
   // Expose to template
   String = String;
 
   private subscriptions: Subscription[] = [];
-  private joinTimeout: any;
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private socketService: SocketService
   ) {}
 
   ngOnInit() {
     this.sessionId = this.route.snapshot.paramMap.get('sessionId') || '';
-    console.log('🎯 Player component initialized with session:', this.sessionId);
 
-    // Check for existing session in localStorage
-    const storedSession = this.socketService.getSessionInfo();
-    if (storedSession && storedSession.sessionId === this.sessionId) {
-      this.playerName = storedSession.playerName;
-      console.log('♻️ Found stored session for:', this.playerName);
+    // Check for saved session in localStorage
+    const savedSession = localStorage.getItem('quiz_session');
+    if (savedSession) {
+      try {
+        const data = JSON.parse(savedSession);
+        if (data.sessionId === this.sessionId && data.playerName) {
+          this.playerName = data.playerName;
+          console.log('Found saved session, will auto-join:', this.playerName);
+        }
+      } catch (e) {
+        console.error('Error parsing saved session:', e);
+      }
     }
 
-    // Monitor connection status
+    this.setupSocketListeners();
+
+    // Auto-join if we have saved credentials
+    if (this.playerName && this.sessionId) {
+      setTimeout(() => this.joinSession(), 500);
+    }
+  }
+
+  private setupSocketListeners(): void {
+    // Connection status
     this.subscriptions.push(
-      this.socketService.connectionStatus$.subscribe(connected => {
-        this.connectionStatus = connected;
-        console.log('🔌 Connection status:', connected ? 'CONNECTED' : 'DISCONNECTED');
+      this.socketService.on<any>('connection_established').subscribe(() => {
+        console.log('✅ Connected to server');
+        this.connectionStatus = 'connected';
+        this.showConnectionBanner = false;
       })
     );
 
-    // Listen to events
+    // Disconnection
     this.subscriptions.push(
-      this.socketService.on<any>('joined_session').subscribe((data) => {
+      this.socketService.onDisconnect().subscribe(() => {
+        console.log('❌ Disconnected from server');
+        this.connectionStatus = 'disconnected';
+        this.showConnectionBanner = true;
+      })
+    );
+
+    // Reconnection
+    this.subscriptions.push(
+      this.socketService.onReconnect().subscribe((attemptNumber) => {
+        console.log(`✅ Reconnected after ${attemptNumber} attempts`);
+        this.connectionStatus = 'connected';
+        this.showConnectionBanner = false;
+
+        // Auto-rejoin if we were in a session
+        if (this.joined && this.playerName && this.sessionId) {
+          console.log('🔄 Auto-rejoining session...');
+          this.socketService.joinSession(this.sessionId, this.playerName);
+        }
+      })
+    );
+
+    // Join response
+    this.subscriptions.push(
+      this.socketService.on<any>('joined_session').subscribe(data => {
         console.log('✅ Joined session successfully:', data);
-        if (this.joinTimeout) {
-          clearTimeout(this.joinTimeout);
-        }
         this.joined = true;
-        this.isJoining = false;
-        this.isReconnected = data.reconnected || false;
-        
-        if (this.isReconnected) {
-          console.log('♻️ Reconnected! Game state:', data.game_state);
-          this.gameState = data.game_state || 'waiting';
-        } else {
-          console.log('🆕 First time joined');
-        }
-      }),
+        this.joining = false;
+        this.reconnected = data.reconnected || false;
+        this.gameState = data.game_state || 'waiting';
+        this.totalScore = data.total_score || 0;
+        this.error = '';
 
+        // Save session to localStorage for recovery
+        localStorage.setItem('quiz_session', JSON.stringify({
+          sessionId: this.sessionId,
+          playerName: this.playerName
+        }));
+
+        if (this.reconnected) {
+          console.log('🔄 Reconnected to existing session');
+        }
+      })
+    );
+
+    // Error handling
+    this.subscriptions.push(
       this.socketService.on<any>('error').subscribe(data => {
-        console.error('❌ Error from server:', data.message);
-        if (this.joinTimeout) {
-          clearTimeout(this.joinTimeout);
-        }
-        this.isJoining = false;
-        
-        if (data.message === 'Session not found') {
-          alert('❌ Sessione non trovata! Verifica il codice.');
-        } else if (data.message === 'Game already started' && !this.joined) {
-          alert('⏰ Il gioco è già iniziato. Non puoi più unirti.');
-        } else if (!data.message.includes('Already answered')) {
-          console.warn('⚠️ Server error:', data.message);
-        }
-      }),
+        console.error('❌ Error:', data.message);
+        this.error = data.message;
+        this.joining = false;
+      })
+    );
 
+    // Game started
+    this.subscriptions.push(
       this.socketService.on<any>('game_started').subscribe(() => {
         console.log('🎮 Game started!');
         this.gameState = 'playing';
-      }),
+      })
+    );
 
+    // New question
+    this.subscriptions.push(
       this.socketService.on<Question>('new_question').subscribe(question => {
-        console.log('❓ New question received:', question.question);
+        console.log('📥 Received new question:', question);
         this.currentQuestion = question;
-        this.selectedAnswer = -1;
+        this.selectedAnswer = null;
         this.answered = question.already_answered || false;
+        this.pointsEarned = 0;
         this.timeRemaining = question.time_limit;
-        this.lastResult = null;
-        
-        if (this.answered) {
-          console.log('⏭️ Already answered this question');
-        }
-      }),
 
+        // Build full image URL if needed
+        if (question.type === 'image' && question.image_url) {
+          const host = window.location.hostname;
+          this.currentQuestion.image_url = `http://${host}:8000${question.image_url}`;
+        }
+
+        if (this.answered) {
+          console.log('⚠️ Already answered this question');
+        }
+      })
+    );
+
+    // Timer update
+    this.subscriptions.push(
       this.socketService.on<any>('timer_update').subscribe(data => {
         this.timeRemaining = data.remaining;
-      }),
+      })
+    );
 
+    // Answer submitted
+    this.subscriptions.push(
       this.socketService.on<any>('answer_submitted').subscribe(data => {
         console.log('✅ Answer submitted:', data);
-        this.lastResult = data;
-      }),
+        this.answered = true;
+        this.pointsEarned = data.points_earned;
+        this.totalScore += data.points_earned;
+      })
+    );
 
+    // Question results
+    this.subscriptions.push(
+      this.socketService.on<any>('question_results').subscribe(data => {
+        console.log('📈 Question results:', data);
+        this.leaderboard = data.leaderboard;
+      })
+    );
+
+    // Game over
+    this.subscriptions.push(
       this.socketService.on<any>('game_over').subscribe(data => {
-        console.log('🏁 Game over!');
+        console.log('🏁 Game over:', data);
         this.gameState = 'finished';
-        this.finalLeaderboard = data.leaderboard;
-        this.socketService.clearSessionInfo();
-      }),
-
-      this.socketService.on<any>('connection_established').subscribe(data => {
-        console.log('🔗 Connection established:', data);
+        this.leaderboard = data.leaderboard;
+        // Clear saved session
+        localStorage.removeItem('quiz_session');
       })
     );
   }
 
-  joinGame(): void {
-    if (this.playerName.trim() && !this.isJoining) {
-      console.log('🚀 Attempting to join game:', this.sessionId, this.playerName);
-      console.log('🔍 Socket state:', this.socketService.getConnectionState());
-      
-      if (!this.socketService.isConnected()) {
-        alert('⚠️ Non connesso al server. Attendi...');
-        return;
-      }
-      
-      this.isJoining = true;
+  joinSession(): void {
+    if (this.playerName.trim() && this.sessionId) {
+      this.joining = true;
+      this.error = '';
       this.socketService.joinSession(this.sessionId, this.playerName.trim());
-      
+
       // Timeout fallback
-      this.joinTimeout = setTimeout(() => {
-        if (this.isJoining && !this.joined) {
-          console.error('⏱️ Join timeout - no response from server');
-          console.error('🔍 Final socket state:', this.socketService.getConnectionState());
-          this.isJoining = false;
-          alert('❌ Errore di connessione. Controlla che il backend sia avviato su porta 8000.');
+      setTimeout(() => {
+        if (this.joining) {
+          this.error = 'Errore di connessione. Riprova.';
+          this.joining = false;
         }
-      }, 10000);
+      }, 5000);
     }
   }
 
   selectAnswer(index: number): void {
-    if (!this.answered && this.timeRemaining > 0) {
+    if (!this.answered) {
       this.selectedAnswer = index;
     }
   }
 
   submitAnswer(): void {
-    if (this.selectedAnswer !== -1 && !this.answered) {
-      console.log('📝 Submitting answer:', this.selectedAnswer);
+    if (this.selectedAnswer !== null && !this.answered) {
       this.socketService.submitAnswer(this.selectedAnswer);
-      this.answered = true;
     }
+  }
+
+  goHome(): void {
+    localStorage.removeItem('quiz_session');
+    this.router.navigate(['/']);
   }
 
   ngOnDestroy() {
     this.subscriptions.forEach(sub => sub.unsubscribe());
-    if (this.joinTimeout) {
-      clearTimeout(this.joinTimeout);
-    }
   }
 }

@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { SocketService } from '../../services/socket.service';
 import { Subscription } from 'rxjs';
 import * as QRCode from 'qrcode';
@@ -15,6 +15,8 @@ interface Question {
   question: string;
   answers: string[];
   time_limit: number;
+  type?: string;
+  image_url?: string;
 }
 
 @Component({
@@ -26,6 +28,7 @@ interface Question {
 })
 export class HostComponent implements OnInit, OnDestroy {
   sessionId = 'QUIZ' + Math.random().toString(36).substring(2, 6).toUpperCase();
+  quizName: string | null = null;
   players: Player[] = [];
   gameState: 'waiting' | 'playing' | 'finished' = 'waiting';
   currentQuestion: Question | null = null;
@@ -43,12 +46,17 @@ export class HostComponent implements OnInit, OnDestroy {
 
   constructor(
     private socketService: SocketService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
 
   async ngOnInit() {
-    // Create session
-    this.socketService.createSession(this.sessionId);
+    // Get quiz name from route
+    this.quizName = this.route.snapshot.paramMap.get('quizName');
+    console.log('Creating session with quiz:', this.quizName);
+
+    // Create session with quiz
+    this.socketService.createSession(this.sessionId, this.quizName);
 
     // Get network IP
     this.networkIp = await this.getLocalIpAddress();
@@ -75,9 +83,16 @@ export class HostComponent implements OnInit, OnDestroy {
       }),
 
       this.socketService.on<Question>('new_question').subscribe(question => {
+        console.log('Received question:', question);
         this.currentQuestion = question;
         this.timeRemaining = question.time_limit;
         this.correctAnswer = -1;
+        
+        // Build full image URL if needed
+        if (question.type === 'image' && question.image_url && this.quizName) {
+          const host = window.location.hostname;
+          this.currentQuestion.image_url = `http://${host}:8000${question.image_url}`;
+        }
       }),
 
       this.socketService.on<any>('timer_update').subscribe(data => {
@@ -122,7 +137,6 @@ export class HostComponent implements OnInit, OnDestroy {
             console.log('ICE Candidate:', candidate);
 
             // Extract IP from candidate string
-            // Format: "candidate:... typ host" contains the local IP
             const ipRegex = /([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/;
             const match = candidate.match(ipRegex);
 
