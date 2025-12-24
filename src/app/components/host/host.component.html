@@ -1,0 +1,88 @@
+<div class="container">
+  <!-- Waiting State -->
+  <div *ngIf="gameState === 'waiting'" class="card">
+    <h1 style="text-align: center; color: #667eea; margin-bottom: 30px;">🎮 Sessione Host</h1>
+    
+    <div class="session-code">{{ sessionId }}</div>
+    
+    <div class="qr-code">
+      <h3>Scansiona il QR Code per unirti:</h3>
+      <img [src]="qrCodeUrl" alt="QR Code" style="margin: 20px auto; display: block;" />
+      <p style="margin-top: 10px; color: #666;">Oppure vai su: {{ 'localhost:4200/play/' + sessionId }}</p>
+    </div>
+
+    <div style="margin: 30px 0;">
+      <h3>Giocatori connessi ({{ players.length }}):</h3>
+      <div class="players-list">
+        <div *ngFor="let player of players" class="player-card">
+          <div style="font-size: 24px;">👤</div>
+          <div style="font-weight: 600; margin-top: 8px;">{{ player.name }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align: center;">
+      <button class="btn btn-success" (click)="startGame()" [disabled]="players.length === 0" 
+              style="font-size: 20px; padding: 16px 32px;">
+        🚀 Avvia Quiz
+      </button>
+    </div>
+  </div>
+
+  <!-- Playing State -->
+  <div *ngIf="gameState === 'playing' && currentQuestion" class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+      <h2>Domanda {{ currentQuestion.question_number }} / {{ currentQuestion.total_questions }}</h2>
+      <div class="timer" [class.warning]="timeRemaining <= 3">{{ timeRemaining }}</div>
+    </div>
+
+    <h1 style="font-size: 32px; margin-bottom: 30px; text-align: center;">{{ currentQuestion.question }}</h1>
+
+    <div>
+      <div *ngFor="let answer of currentQuestion.answers; let i = index" 
+           class="answer-option"
+           [class.correct]="correctAnswer === i"
+           [class.wrong]="correctAnswer !== -1 && correctAnswer !== i">
+        <strong>{{ String.fromCharCode(65 + i) }}.</strong> {{ answer }}
+      </div>
+    </div>
+
+    <div *ngIf="leaderboard.length > 0" style="margin-top: 30px;">
+      <h3>Classifica attuale:</h3>
+      <ul class="leaderboard">
+        <li *ngFor="let entry of leaderboard; let i = index" class="leaderboard-item">
+          <span>
+            <strong>{{ i + 1 }}.</strong> {{ entry.name }}
+            <small style="margin-left: 10px; color: #666;">({{ entry.correct_answers }} corrette)</small>
+          </span>
+          <span style="font-weight: 700; color: #667eea;">{{ entry.score | number:'1.0-0' }} pts</span>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Finished State -->
+  <div *ngIf="gameState === 'finished'" class="card">
+    <h1 style="text-align: center; color: #667eea; margin-bottom: 40px;">🏆 Classifica Finale</h1>
+
+    <ul class="leaderboard">
+      <li *ngFor="let entry of leaderboard; let i = index" class="leaderboard-item">
+        <span>
+          <span style="font-size: 24px; margin-right: 10px;">
+            {{ i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '👤' }}
+          </span>
+          <strong>{{ entry.name }}</strong>
+          <small style="margin-left: 10px; color: #666;">({{ entry.correct_answers }} corrette)</small>
+        </span>
+        <span style="font-weight: 700; font-size: 24px; color: #667eea;">{{ entry.score | number:'1.0-0' }} pts</span>
+      </li>
+    </ul>
+
+    <div style="text-align: center; margin-top: 40px;">
+      <button class="btn btn-primary" (click)="window.location.href = '/'" 
+              style="font-size: 18px; padding: 16px 32px;">
+        🔄 Nuova Partita
+      </button>
+    </div>
+  </div>
+</div>

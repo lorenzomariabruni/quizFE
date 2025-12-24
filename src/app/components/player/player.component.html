@@ -1,0 +1,98 @@
+<div class="container">
+  <!-- Join Form -->
+  <div *ngIf="!joined" class="card" style="margin-top: 100px;">
+    <h1 style="text-align: center; color: #667eea; margin-bottom: 30px;">📱 Unisciti al Quiz</h1>
+    
+    <div class="session-code">{{ sessionId }}</div>
+    
+    <div style="margin: 30px 0;">
+      <label style="display: block; margin-bottom: 10px; font-weight: 600;">Il tuo nome:</label>
+      <input type="text" [(ngModel)]="playerName" placeholder="Inserisci il tuo nome" 
+             (keyup.enter)="joinGame()" />
+    </div>
+
+    <div style="text-align: center;">
+      <button class="btn btn-primary" (click)="joinGame()" [disabled]="!playerName.trim()"
+              style="font-size: 18px; padding: 16px 32px; width: 100%;">
+        🚀 Entra nel Gioco
+      </button>
+    </div>
+  </div>
+
+  <!-- Waiting State -->
+  <div *ngIf="joined && gameState === 'waiting'" class="card" style="margin-top: 100px; text-align: center;">
+    <h1 style="color: #667eea; margin-bottom: 20px;">Ciao {{ playerName }}! 👋</h1>
+    <div style="font-size: 24px; margin: 40px 0;">
+      <div style="margin-bottom: 20px;">⏳ Attendi che l'host avvii il quiz...</div>
+      <div class="timer" style="font-size: 60px; animation: pulse 2s infinite;">∞</div>
+    </div>
+  </div>
+
+  <!-- Playing State -->
+  <div *ngIf="gameState === 'playing' && currentQuestion" class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h3>Domanda {{ currentQuestion.question_number }} / {{ currentQuestion.total_questions }}</h3>
+      <div class="timer" [class.warning]="timeRemaining <= 3">{{ timeRemaining }}</div>
+    </div>
+
+    <h2 style="font-size: 24px; margin-bottom: 30px; text-align: center;">{{ currentQuestion.question }}</h2>
+
+    <div>
+      <div *ngFor="let answer of currentQuestion.answers; let i = index" 
+           class="answer-option"
+           [class.selected]="selectedAnswer === i"
+           (click)="selectAnswer(i)">
+        <strong>{{ String.fromCharCode(65 + i) }}.</strong> {{ answer }}
+      </div>
+    </div>
+
+    <div style="margin-top: 30px; text-align: center;">
+      <button class="btn btn-success" 
+              (click)="submitAnswer()" 
+              [disabled]="selectedAnswer === -1 || answered || timeRemaining === 0"
+              style="font-size: 18px; padding: 16px 32px; width: 100%;">
+        {{ answered ? '✅ Risposta Inviata!' : '📤 Invia Risposta' }}
+      </button>
+    </div>
+
+    <div *ngIf="lastResult" style="margin-top: 20px; padding: 20px; border-radius: 8px; text-align: center;"
+         [style.background]="lastResult.is_correct ? '#c6f6d5' : '#fed7d7'">
+      <div style="font-size: 24px; margin-bottom: 10px;">
+        {{ lastResult.is_correct ? '✅ Corretto!' : '❌ Sbagliato!' }}
+      </div>
+      <div style="font-size: 32px; font-weight: 700;"
+           [style.color]="lastResult.points_earned > 0 ? '#48bb78' : '#f56565'">
+        {{ lastResult.points_earned > 0 ? '+' : '' }}{{ lastResult.points_earned | number:'1.0-0' }} punti
+      </div>
+    </div>
+  </div>
+
+  <!-- Finished State -->
+  <div *ngIf="gameState === 'finished'" class="card" style="margin-top: 50px;">
+    <h1 style="text-align: center; color: #667eea; margin-bottom: 40px;">🏆 Game Over!</h1>
+
+    <div *ngIf="finalLeaderboard.length > 0">
+      <h2 style="text-align: center; margin-bottom: 30px;">Classifica Finale:</h2>
+      <ul class="leaderboard">
+        <li *ngFor="let entry of finalLeaderboard; let i = index" class="leaderboard-item"
+            [style.font-weight]="entry.name === playerName ? '900' : 'normal'"
+            [style.transform]="entry.name === playerName ? 'scale(1.05)' : 'none'">
+          <span>
+            <span style="font-size: 24px; margin-right: 10px;">
+              {{ i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '👤' }}
+            </span>
+            {{ entry.name }}
+            <small style="margin-left: 10px; color: #666;">({{ entry.correct_answers }} corrette)</small>
+          </span>
+          <span style="font-weight: 700; font-size: 20px; color: #667eea;">{{ entry.score | number:'1.0-0' }} pts</span>
+        </li>
+      </ul>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px;">
+      <a href="/" class="btn btn-primary" style="text-decoration: none; display: inline-block; font-size: 18px; padding: 16px 32px;">
+        🏠 Torna alla Home
+      </a>
+    </div>
+  </div>
+</div>
