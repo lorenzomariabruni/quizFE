@@ -13,6 +13,7 @@ export class SocketService {
 
   // Store session info for reconnection
   private sessionInfo: { sessionId: string; playerName: string } | null = null;
+  private isReconnecting = false;
 
   constructor() {
     // Use current host instead of hardcoded localhost
@@ -36,18 +37,22 @@ export class SocketService {
       this.connectionStatus.next(true);
       
       // Auto-rejoin session if reconnecting
-      if (this.sessionInfo) {
+      if (this.sessionInfo && this.isReconnecting) {
         console.log('Reconnecting to session:', this.sessionInfo);
-        this.emit('join_session', {
+        this.socket.emit('join_session', {
           session_id: this.sessionInfo.sessionId,
           player_name: this.sessionInfo.playerName
         });
       }
+      this.isReconnecting = false;
     });
 
     this.socket.on('disconnect', (reason) => {
       console.log('Disconnected from server:', reason);
       this.connectionStatus.next(false);
+      if (this.sessionInfo) {
+        this.isReconnecting = true;
+      }
     });
 
     this.socket.on('connect_error', (error) => {
@@ -69,6 +74,7 @@ export class SocketService {
     this.sessionInfo = { sessionId, playerName };
     // Store in localStorage for page refresh recovery
     localStorage.setItem('quiz_session', JSON.stringify(this.sessionInfo));
+    console.log('Session info stored:', this.sessionInfo);
   }
 
   // Get stored session info
@@ -97,6 +103,7 @@ export class SocketService {
 
   // Emit events
   emit(event: string, data: any): void {
+    console.log('Emitting event:', event, data);
     this.socket.emit(event, data);
   }
 
@@ -104,6 +111,7 @@ export class SocketService {
   on<T>(event: string): Observable<T> {
     return new Observable(observer => {
       this.socket.on(event, (data: T) => {
+        console.log('Received event:', event, data);
         observer.next(data);
       });
 
@@ -124,6 +132,7 @@ export class SocketService {
   }
 
   joinSession(sessionId: string, playerName: string): void {
+    console.log('Joining session:', sessionId, playerName);
     this.setSessionInfo(sessionId, playerName);
     this.emit('join_session', { session_id: sessionId, player_name: playerName });
   }
