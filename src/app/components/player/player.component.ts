@@ -58,6 +58,7 @@ export class PlayerComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.sessionId = this.route.snapshot.paramMap.get('sessionId') || '';
+    console.log('🎮 Player component initialized with sessionId:', this.sessionId);
 
     // Check for saved session in localStorage
     const savedSession = localStorage.getItem('quiz_session');
@@ -66,7 +67,7 @@ export class PlayerComponent implements OnInit, OnDestroy {
         const data = JSON.parse(savedSession);
         if (data.sessionId === this.sessionId && data.playerName) {
           this.playerName = data.playerName;
-          console.log('Found saved session, will auto-join:', this.playerName);
+          console.log('💾 Found saved session, will auto-join:', this.playerName);
         }
       } catch (e) {
         console.error('Error parsing saved session:', e);
@@ -141,8 +142,22 @@ export class PlayerComponent implements OnInit, OnDestroy {
     // Error handling
     this.subscriptions.push(
       this.socketService.on<any>('error').subscribe(data => {
-        console.error('❌ Error:', data.message);
-        this.error = data.message;
+        console.error('❌ Error from server:', data.message);
+        
+        // Provide more helpful error messages
+        if (data.message === 'Session not found') {
+          this.error = `⚠️ Sessione "${this.sessionId}" non trovata.\n\n` +
+                      'Possibili cause:\n' +
+                      '• L\'host non ha ancora avviato la sessione\n' +
+                      '• Il codice della sessione è errato\n' +
+                      '• La sessione è già terminata\n\n' +
+                      'Chiedi all\'host di verificare che la sessione sia attiva.';
+        } else if (data.message === 'Game already started') {
+          this.error = '⚠️ Il gioco è già iniziato. Non puoi più unirti.';
+        } else {
+          this.error = data.message;
+        }
+        
         this.joining = false;
       })
     );
@@ -226,14 +241,21 @@ export class PlayerComponent implements OnInit, OnDestroy {
 
   joinSession(): void {
     if (this.playerName.trim() && this.sessionId) {
+      console.log(`🚀 Attempting to join session ${this.sessionId} as ${this.playerName}`);
       this.joining = true;
       this.error = '';
       this.socketService.joinSession(this.sessionId, this.playerName.trim());
 
-      // Timeout fallback
+      // Timeout fallback with better error message
       setTimeout(() => {
         if (this.joining) {
-          this.error = 'Errore di connessione. Riprova.';
+          console.error('⏰ Join timeout - no response from server');
+          this.error = '⚠️ Errore di connessione al server.\n\n' +
+                      'Possibili cause:\n' +
+                      '• Il server non è raggiungibile\n' +
+                      '• Problemi di rete\n' +
+                      '• Firewall che blocca la connessione\n\n' +
+                      'Riprova o contatta l\'host.';
           this.joining = false;
         }
       }, 5000);
