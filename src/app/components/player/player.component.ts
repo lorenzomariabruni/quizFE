@@ -35,13 +35,12 @@ export class PlayerComponent implements OnInit, OnDestroy {
   isReconnected = false;
   connectionStatus = true;
   isJoining = false;
-  reconnectionAttempts = 0;
 
   // Expose to template
   String = String;
 
   private subscriptions: Subscription[] = [];
-  private hasTriedAutoRejoin = false;
+  private joinTimeout: any;
 
   constructor(
     private route: ActivatedRoute,
@@ -57,26 +56,13 @@ export class PlayerComponent implements OnInit, OnDestroy {
     if (storedSession && storedSession.sessionId === this.sessionId) {
       this.playerName = storedSession.playerName;
       console.log('♻️ Found stored session for:', this.playerName);
-      // Don't set joined=true yet, wait for server confirmation
     }
 
     // Monitor connection status
     this.subscriptions.push(
       this.socketService.connectionStatus$.subscribe(connected => {
-        const wasDisconnected = !this.connectionStatus;
         this.connectionStatus = connected;
         console.log('🔌 Connection status:', connected ? 'CONNECTED' : 'DISCONNECTED');
-        
-        // Reset reconnection attempts on successful connection
-        if (connected && wasDisconnected) {
-          this.reconnectionAttempts = 0;
-          console.log('✅ Connection restored!');
-          
-          // If we were already joined and reconnecting, the service will auto-rejoin
-          // Just wait for joined_session event
-        } else if (!connected) {
-          this.reconnectionAttempts++;
-        }
       })
     );
 
@@ -84,28 +70,34 @@ export class PlayerComponent implements OnInit, OnDestroy {
     this.subscriptions.push(
       this.socketService.on<any>('joined_session').subscribe((data) => {
         console.log('✅ Joined session successfully:', data);
+        if (this.joinTimeout) {
+          clearTimeout(this.joinTimeout);
+        }
         this.joined = true;
         this.isJoining = false;
-        this.hasTriedAutoRejoin = false;
         this.isReconnected = data.reconnected || false;
         
         if (this.isReconnected) {
           console.log('♻️ Reconnected! Game state:', data.game_state);
           this.gameState = data.game_state || 'waiting';
+        } else {
+          console.log('🆕 First time joined');
         }
       }),
 
       this.socketService.on<any>('error').subscribe(data => {
         console.error('❌ Error from server:', data.message);
+        if (this.joinTimeout) {
+          clearTimeout(this.joinTimeout);
+        }
         this.isJoining = false;
         
         if (data.message === 'Session not found') {
-          alert('Sessione non trovata! Verifica il codice.');
+          alert('❌ Sessione non trovata! Verifica il codice.');
         } else if (data.message === 'Game already started' && !this.joined) {
-          alert('Il gioco è già iniziato. Non puoi più unirti.');
+          alert('⏰ Il gioco è già iniziato. Non puoi più unirti.');
         } else if (!data.message.includes('Already answered')) {
-          // Don't show alert for other errors during reconnection
-          console.warn('Server error (not showing to user):', data.message);
+          console.warn('⚠️ Server error:', data.message);
         }
       }),
 
@@ -152,17 +144,25 @@ export class PlayerComponent implements OnInit, OnDestroy {
   joinGame(): void {
     if (this.playerName.trim() && !this.isJoining) {
       console.log('🚀 Attempting to join game:', this.sessionId, this.playerName);
+      console.log('🔍 Socket state:', this.socketService.getConnectionState());
+      
+      if (!this.socketService.isConnected()) {
+        alert('⚠️ Non connesso al server. Attendi...');
+        return;
+      }
+      
       this.isJoining = true;
       this.socketService.joinSession(this.sessionId, this.playerName.trim());
       
       // Timeout fallback
-      setTimeout(() => {
+      this.joinTimeout = setTimeout(() => {
         if (this.isJoining && !this.joined) {
           console.error('⏱️ Join timeout - no response from server');
+          console.error('🔍 Final socket state:', this.socketService.getConnectionState());
           this.isJoining = false;
-          alert('Errore di connessione. Riprova.');
+          alert('❌ Errore di connessione. Controlla che il backend sia avviato su porta 8000.');
         }
-      }, 10000); // Increased to 10 seconds
+      }, 10000);
     }
   }
 
@@ -182,5 +182,8 @@ export class PlayerComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.subscriptions.forEach(sub => sub.unsubscribe());
+    if (this.joinTimeout) {
+      clearTimeout(this.joinTimeout);
+    }
   }
 }

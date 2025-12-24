@@ -13,7 +13,7 @@ export class SocketService {
 
   // Store session info for reconnection
   private sessionInfo: { sessionId: string; playerName: string } | null = null;
-  private hasAutoRejoined = false;
+  private isDisconnected = false;
 
   constructor() {
     // Use current host instead of hardcoded localhost
@@ -21,45 +21,51 @@ export class SocketService {
     const port = '8000'; // Backend port
     this.serverUrl = `http://${host}:${port}`;
 
-    console.log('Connecting to backend at:', this.serverUrl);
+    console.log('🌐 Connecting to backend at:', this.serverUrl);
 
     this.socket = io(this.serverUrl, {
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],  // Try polling first, then websocket
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
-      autoConnect: true
+      autoConnect: true,
+      upgrade: true,
+      rememberUpgrade: true,
+      forceNew: false
     });
 
     this.socket.on('connect', () => {
       console.log('✅ Connected to server:', this.socket.id);
+      console.log('📡 Transport:', this.socket.io.engine.transport.name);
       this.connectionStatus.next(true);
       
-      // Auto-rejoin session ONLY if we have stored info AND this is a reconnection (not first connect)
-      if (this.sessionInfo && this.hasAutoRejoined) {
-        console.log('🔄 Auto-rejoining session after reconnection:', this.sessionInfo);
+      // Auto-rejoin ONLY if we were previously disconnected
+      if (this.sessionInfo && this.isDisconnected) {
+        console.log('🔄 Auto-rejoining after disconnect:', this.sessionInfo);
         setTimeout(() => {
-          this.socket.emit('join_session', {
-            session_id: this.sessionInfo!.sessionId,
-            player_name: this.sessionInfo!.playerName
-          });
-        }, 200);
+          if (this.sessionInfo) {
+            this.socket.emit('join_session', {
+              session_id: this.sessionInfo.sessionId,
+              player_name: this.sessionInfo.playerName
+            });
+          }
+        }, 300);
+        this.isDisconnected = false;
       }
     });
 
     this.socket.on('disconnect', (reason) => {
       console.log('❌ Disconnected from server:', reason);
       this.connectionStatus.next(false);
-      // Mark that we've been connected before (for auto-rejoin logic)
       if (this.sessionInfo) {
-        this.hasAutoRejoined = true;
+        this.isDisconnected = true;
       }
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('🔴 Connection error:', error);
+      console.error('🔴 Connection error:', error.message);
       this.connectionStatus.next(false);
     });
 
@@ -71,15 +77,14 @@ export class SocketService {
       console.log('✅ Reconnected after', attemptNumber, 'attempts');
     });
 
-    this.socket.on('reconnect_failed', () => {
-      console.error('❌ Reconnection failed');
+    this.socket.io.engine.on('upgrade', (transport: any) => {
+      console.log('⬆️ Transport upgraded to:', transport.name);
     });
   }
 
   // Store session info for reconnection
   setSessionInfo(sessionId: string, playerName: string): void {
     this.sessionInfo = { sessionId, playerName };
-    // Store in localStorage for page refresh recovery
     localStorage.setItem('quiz_session', JSON.stringify(this.sessionInfo));
     console.log('💾 Session info stored:', this.sessionInfo);
   }
@@ -107,7 +112,7 @@ export class SocketService {
   // Clear session info
   clearSessionInfo(): void {
     this.sessionInfo = null;
-    this.hasAutoRejoined = false;
+    this.isDisconnected = false;
     localStorage.removeItem('quiz_session');
     console.log('🗑️ Session info cleared');
   }
@@ -137,6 +142,16 @@ export class SocketService {
     return this.socket.connected;
   }
 
+  // Get connection state for debugging
+  getConnectionState(): any {
+    return {
+      connected: this.socket.connected,
+      disconnected: this.socket.disconnected,
+      id: this.socket.id,
+      transport: this.socket.io.engine?.transport?.name
+    };
+  }
+
   // Specific methods
   createSession(sessionId: string): void {
     this.emit('create_session', { session_id: sessionId });
@@ -144,6 +159,7 @@ export class SocketService {
 
   joinSession(sessionId: string, playerName: string): void {
     console.log('🎮 Joining session:', sessionId, playerName);
+    console.log('🔍 Connection state:', this.getConnectionState());
     this.setSessionInfo(sessionId, playerName);
     this.emit('join_session', { session_id: sessionId, player_name: playerName });
   }
