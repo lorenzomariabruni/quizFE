@@ -15,8 +15,9 @@
 
     <div *ngIf="!loading && !error">
       <div *ngIf="quizzes.length === 0" style="text-align: center; padding: 40px;">
-        <p style="color: #666; margin-bottom: 20px;">Nessun quiz disponibile</p>
-        <a routerLink="/create-quiz" class="btn btn-primary">
+        <div style="font-size: 64px; margin-bottom: 20px;">📝</div>
+        <p style="color: #666; margin-bottom: 20px; font-size: 18px;">Nessun quiz disponibile</p>
+        <a routerLink="/create-quiz" class="btn btn-primary" style="text-decoration: none; display: inline-block;">
           ➕ Crea il Primo Quiz
         </a>
       </div>
@@ -29,14 +30,16 @@
           (click)="selectQuiz(quiz.name)"
           style="padding: 20px; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all 0.2s;">
           <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
-            <h3 style="margin: 0; color: #667eea;">{{ quiz.title }}</h3>
-            <span style="background: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: 600;">
+            <h3 style="margin: 0; color: #667eea; font-size: 20px;">{{ quiz.title }}</h3>
+            <span style="background: #667eea; color: white; padding: 6px 14px; border-radius: 20px; font-size: 14px; font-weight: 600; white-space: nowrap; margin-left: 10px;">
               {{ quiz.question_count }} domande
             </span>
           </div>
           <p *ngIf="quiz.description" style="color: #666; margin: 10px 0 0 0;">{{ quiz.description }}</p>
           <div *ngIf="selectedQuiz === quiz.name" style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #667eea;">
-            <p style="color: #667eea; font-weight: 600; margin: 0;">✅ Selezionato</p>
+            <p style="color: #667eea; font-weight: 600; margin: 0; display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 20px;">✅</span> Selezionato
+            </p>
           </div>
         </div>
       </div>
@@ -52,7 +55,7 @@
           class="btn btn-primary" 
           (click)="createSession()"
           [disabled]="!selectedQuiz"
-          style="flex: 2;">
+          style="flex: 2; font-size: 18px;">
           🚀 Crea Sessione
         </button>
       </div>

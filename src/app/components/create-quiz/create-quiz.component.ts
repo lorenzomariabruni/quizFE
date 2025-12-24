@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import * as QRCode from 'qrcode';
 
 interface Question {
   id?: string;
@@ -21,13 +22,18 @@ interface Question {
   templateUrl: './create-quiz.component.html',
   styleUrls: ['./create-quiz.component.scss']
 })
-export class CreateQuizComponent {
+export class CreateQuizComponent implements OnInit {
   // Quiz metadata
   quizName = '';
   quizTitle = '';
   quizDescription = '';
   quizCreated = false;
   createdQuizName = '';
+
+  // QR Code for sharing
+  qrCodeUrl = '';
+  addQuestionUrl = '';
+  networkIp = '';
 
   // Current question being added
   currentQuestion: Question = {
@@ -50,7 +56,12 @@ export class CreateQuizComponent {
     private http: HttpClient
   ) {}
 
-  createQuiz(): void {
+  async ngOnInit() {
+    // Detect network IP for QR code
+    this.networkIp = await this.getLocalIpAddress();
+  }
+
+  async createQuiz(): Promise<void> {
     if (!this.quizName.trim() || !this.quizTitle.trim()) {
       this.error = 'Nome e titolo quiz sono obbligatori';
       return;
@@ -68,11 +79,16 @@ export class CreateQuizComponent {
     formData.append('description', this.quizDescription.trim());
 
     this.http.post<{name: string, message: string}>(apiUrl, formData).subscribe({
-      next: (response) => {
+      next: async (response) => {
         this.quizCreated = true;
         this.createdQuizName = response.name;
         this.success = 'Quiz creato! Ora aggiungi delle domande.';
         this.loading = false;
+
+        // Generate QR code for this page
+        const port = window.location.port ? `:${window.location.port}` : '';
+        this.addQuestionUrl = `http://${this.networkIp}${port}/create-quiz?quiz=${this.createdQuizName}`;
+        this.qrCodeUrl = await QRCode.toDataURL(this.addQuestionUrl, { width: 300 });
       },
       error: (err) => {
         this.error = err.error?.detail || 'Errore nella creazione del quiz';
@@ -81,18 +97,57 @@ export class CreateQuizComponent {
     });
   }
 
+  private async getLocalIpAddress(): Promise<string> {
+    try {
+      const pc = new RTCPeerConnection({ iceServers: [] });
+      pc.createDataChannel('');
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      return new Promise<string>((resolve) => {
+        let resolved = false;
+
+        pc.onicecandidate = (event) => {
+          if (resolved) return;
+
+          if (event.candidate) {
+            const candidate = event.candidate.candidate;
+            const ipRegex = /([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/;
+            const match = candidate.match(ipRegex);
+
+            if (match && match[1]) {
+              const ip = match[1];
+              if (ip !== '0.0.0.0' && !ip.startsWith('127.')) {
+                resolved = true;
+                pc.close();
+                resolve(ip);
+              }
+            }
+          }
+        };
+
+        setTimeout(() => {
+          if (!resolved) {
+            pc.close();
+            resolve(window.location.hostname);
+          }
+        }, 3000);
+      });
+    } catch (error) {
+      return window.location.hostname;
+    }
+  }
+
   onImageSelect(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
       const file = input.files[0];
       
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         this.error = 'Per favore seleziona un file immagine';
         return;
       }
 
-      // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         this.error = 'Immagine troppo grande (max 5MB)';
         return;
@@ -100,7 +155,6 @@ export class CreateQuizComponent {
 
       this.currentQuestion.image = file;
 
-      // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
         this.currentQuestion.imagePreview = e.target?.result as string;
@@ -115,7 +169,6 @@ export class CreateQuizComponent {
   }
 
   addQuestion(): void {
-    // Validate
     if (!this.currentQuestion.question.trim()) {
       this.error = 'Il testo della domanda è obbligatorio';
       return;
@@ -165,6 +218,9 @@ export class CreateQuizComponent {
         };
         
         this.loading = false;
+
+        // Scroll to top to see success message
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       },
       error: (err) => {
         this.error = err.error?.detail || 'Errore nell\'aggiunta della domanda';
