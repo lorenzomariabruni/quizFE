@@ -65,6 +65,10 @@
   border-radius: 8px;
   margin-bottom: 20px;
   font-weight: 500;
+  white-space: pre-line;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.6;
 }
 
 .name-input {
@@ -182,19 +186,22 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  min-width: 80px;
 
   .score-label {
     color: #a0aec0;
-    font-size: 12px;
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
     margin-bottom: 4px;
+    white-space: nowrap;
   }
 
   .score-value {
     color: #667eea;
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
+    line-height: 1;
   }
 }
 
@@ -202,6 +209,7 @@
   color: #2d3748;
   font-size: 16px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .timer {
@@ -633,8 +641,30 @@
   }
 
   .game-header {
-    flex-direction: column;
-    gap: 12px;
+    padding: 16px 12px;
+    gap: 8px;
+  }
+
+  .score-display {
+    min-width: 60px;
+
+    .score-label {
+      font-size: 10px;
+    }
+
+    .score-value {
+      font-size: 20px;
+    }
+  }
+
+  .question-counter {
+    font-size: 14px;
+  }
+
+  .timer {
+    padding: 6px 12px;
+    font-size: 16px;
+    min-width: 60px;
   }
 
   .question-text {

@@ -1,65 +1,67 @@
 <div class="player-container">
   <!-- Connection Banner -->
-  <div *ngIf="showConnectionBanner" class="connection-banner">
-    <p>⚠️ Connessione persa. Tentativo di riconnessione...</p>
+  <div class="connection-banner" *ngIf="showConnectionBanner">
+    ⚠️ Connessione persa... Riconnessione in corso...
   </div>
 
   <!-- Join Screen -->
-  <div *ngIf="!joined" class="join-screen">
+  <div class="join-screen" *ngIf="!joined">
     <div class="join-card">
       <h1>🎮 Unisciti al Quiz</h1>
       <p class="session-id">Sessione: <strong>{{ sessionId }}</strong></p>
 
-      <div *ngIf="error" class="error-message">
-        ❌ {{ error }}
+      <div class="error-message" *ngIf="error">
+        {{ error }}
       </div>
 
       <input
         type="text"
         [(ngModel)]="playerName"
         placeholder="Inserisci il tuo nome"
+        class="name-input"
+        maxlength="20"
         (keyup.enter)="joinSession()"
         [disabled]="joining"
-        class="name-input"
       />
 
       <button
+        class="join-button"
         (click)="joinSession()"
         [disabled]="!playerName.trim() || joining"
-        class="join-button">
+      >
         {{ joining ? '⏳ Connessione...' : '🚀 Inizia!' }}
       </button>
     </div>
   </div>
 
   <!-- Waiting Screen -->
-  <div *ngIf="joined && gameState === 'waiting'" class="waiting-screen">
+  <div class="waiting-screen" *ngIf="joined && gameState === 'waiting'">
     <div class="waiting-card">
       <h1>⏳ In Attesa...</h1>
       <p class="player-name">Ciao, <strong>{{ playerName }}</strong>!</p>
-      <p class="waiting-message">Aspettando che l'host inizi il gioco...</p>
+      <p class="waiting-message">Aspettando che l'host avvii il gioco...</p>
       <div class="spinner"></div>
     </div>
   </div>
 
   <!-- Playing Screen -->
-  <div *ngIf="joined && gameState === 'playing' && currentQuestion" class="playing-screen">
-    <!-- Header -->
+  <div class="playing-screen" *ngIf="joined && gameState === 'playing' && currentQuestion">
+    <!-- Header with Score and Timer -->
     <div class="game-header">
       <div class="score-display">
         <span class="score-label">Punteggio</span>
-        <span class="score-value">{{ totalScore }}</span>
+        <span class="score-value">{{ totalScore | number:'1.0-0' }}</span>
       </div>
-      <div class="question-counter">
-        Domanda {{ currentQuestion.question_number }} / {{ currentQuestion.total_questions }}
-      </div>
+      <span class="question-counter">
+        Domanda {{ currentQuestion.question_number }}/{{ currentQuestion.total_questions }}
+      </span>
       <div class="timer" [class.timer-warning]="timeRemaining <= 3">
         ⏱️ {{ timeRemaining }}s
       </div>
     </div>
 
-    <!-- Question Image (if exists) -->
-    <div *ngIf="currentQuestion.type === 'image' && currentQuestion.image_url" class="question-image-container">
+    <!-- Question Image (if available) -->
+    <div class="question-image-container" *ngIf="currentQuestion.type === 'image' && currentQuestion.image_url">
       <img [src]="currentQuestion.image_url" alt="Question image" class="question-image" />
     </div>
 
@@ -68,12 +70,20 @@
       <h2 class="question-text">{{ currentQuestion.question }}</h2>
     </div>
 
-    <!-- Answer Status (after submission, before results) -->
-    <div *ngIf="answered && !showingResults" class="answer-status">
-      <div class="status-card waiting-results">
-        <div class="status-icon">⏳</div>
-        <p class="status-message">Risposta inviata!</p>
-        <p class="status-detail">Attendere i risultati...</p>
+    <!-- Answer Status / Results -->
+    <div class="answer-status" *ngIf="answered">
+      <div class="status-card" [class.waiting-results]="!showingResults">
+        <div *ngIf="!showingResults">
+          <div class="status-icon">⏳</div>
+          <p class="status-message">Risposta Inviata!</p>
+          <p class="status-detail">Aspettando gli altri giocatori...</p>
+        </div>
+        <div *ngIf="showingResults" class="results-display">
+          <div class="points-earned" [class.no-points]="pointsEarned === 0">
+            <span class="points-value">{{ pointsEarned | number:'1.0-0' }}</span>
+            <span class="points-label">punti</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -83,66 +93,68 @@
         *ngFor="let answer of currentQuestion.answers; let i = index"
         class="answer-button"
         [class.selected]="selectedAnswer === i && !showingResults"
-        [class.correct]="isCorrectAnswer(i)"
-        [class.wrong]="isWrongAnswer(i)"
-        [disabled]="answered"
-        (click)="selectAnswer(i)">
+        [class.correct]="showingResults && isCorrectAnswer(i)"
+        [class.wrong]="showingResults && isWrongAnswer(i)"
+        (click)="selectAnswer(i)"
+        [disabled]="answered || showingResults"
+      >
         <span class="answer-letter">{{ String.fromCharCode(65 + i) }}</span>
         <span class="answer-text">{{ answer }}</span>
-        <span *ngIf="isCorrectAnswer(i)" class="result-icon">✅</span>
-        <span *ngIf="isWrongAnswer(i)" class="result-icon">❌</span>
+        <span class="result-icon" *ngIf="showingResults && isCorrectAnswer(i)">✅</span>
+        <span class="result-icon" *ngIf="showingResults && isWrongAnswer(i)">❌</span>
       </button>
     </div>
 
     <!-- Submit Button -->
     <button
-      *ngIf="!answered"
+      *ngIf="!answered && !showingResults"
       class="submit-button"
+      (click)="submitAnswer()"
       [disabled]="selectedAnswer === null"
-      (click)="submitAnswer()">
-      ✅ Invia Risposta
+    >
+      📤 Invia Risposta
     </button>
-
-    <!-- Results Display -->
-    <div *ngIf="showingResults" class="results-display">
-      <div class="points-earned" [class.no-points]="pointsEarned === 0">
-        <span class="points-value">{{ pointsEarned > 0 ? '+' + pointsEarned : pointsEarned }}</span>
-        <span class="points-label">punti</span>
-      </div>
-    </div>
   </div>
 
   <!-- Finished Screen -->
-  <div *ngIf="joined && gameState === 'finished'" class="finished-screen">
+  <div class="finished-screen" *ngIf="joined && gameState === 'finished'">
     <div class="finished-card">
-      <h1>🏆 Quiz Completato!</h1>
+      <h1>🏆 Game Over!</h1>
 
+      <!-- Final Score -->
       <div class="final-score">
-        <p class="score-label">Punteggio Finale</p>
-        <p class="score-value">{{ totalScore }}</p>
+        <p class="score-label">Il Tuo Punteggio Finale</p>
+        <h2 class="score-value">{{ totalScore | number:'1.0-0' }}</h2>
       </div>
 
-      <h2 class="leaderboard-title">🏅 Classifica</h2>
+      <!-- Leaderboard -->
+      <h3 class="leaderboard-title">🏅 Classifica Finale</h3>
       <div class="leaderboard">
         <div
           *ngFor="let player of leaderboard; let i = index"
           class="leaderboard-item"
-          [class.highlight]="player.name === playerName">
-          <span class="position" [ngClass]="{
-            'gold': i === 0,
-            'silver': i === 1,
-            'bronze': i === 2
-          }">
-            {{ i + 1 }}
+          [class.highlight]="player.name === playerName"
+        >
+          <span
+            class="position"
+            [class.gold]="i === 0"
+            [class.silver]="i === 1"
+            [class.bronze]="i === 2"
+          >
+            <span *ngIf="i === 0">🥇</span>
+            <span *ngIf="i === 1">🥈</span>
+            <span *ngIf="i === 2">🥉</span>
+            <span *ngIf="i > 2">{{ i + 1 }}</span>
           </span>
           <span class="name">{{ player.name }}</span>
-          <span class="stats">
+          <div class="stats">
             <span class="correct">✅ {{ player.correct_answers }}</span>
-            <span class="score">{{ player.score }} pt</span>
-          </span>
+            <span class="score">{{ player.score | number:'1.0-0' }}</span>
+          </div>
         </div>
       </div>
 
+      <!-- Home Button -->
       <button class="home-button" (click)="goHome()">
         🏠 Torna alla Home
       </button>
