@@ -1,129 +1,162 @@
 <div class="container">
-  <div class="card" style="margin-top: 50px; max-width: 900px; margin-left: auto; margin-right: auto;">
-    <h1 style="text-align: center; color: #667eea; margin-bottom: 30px;">
-      ➕ Crea Nuovo Quiz
-    </h1>
-
-    <!-- Error/Success messages -->
-    <div *ngIf="error" style="background: #fed7d7; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-      <p style="color: #c53030; margin: 0;">❌ {{ error }}</p>
+  <div class="card quiz-creation-card">
+    <!-- Header -->
+    <div class="header-section">
+      <h1 class="main-title">
+        <span class="icon">✏️</span> Crea Nuovo Quiz
+      </h1>
+      <p class="subtitle" *ngIf="!quizCreated">Compila le informazioni per iniziare</p>
+      <p class="subtitle" *ngIf="quizCreated">Aggiungi domande al tuo quiz</p>
     </div>
 
-    <div *ngIf="success" style="background: #c6f6d5; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-      <p style="color: #22543d; margin: 0;">✅ {{ success }}</p>
+    <!-- Status Messages -->
+    <div *ngIf="error" class="alert alert-error" role="alert">
+      <span class="alert-icon">⚠️</span>
+      <span>{{ error }}</span>
+    </div>
+
+    <div *ngIf="success" class="alert alert-success" role="alert">
+      <span class="alert-icon">✅</span>
+      <span>{{ success }}</span>
     </div>
 
     <!-- Step 1: Create Quiz -->
-    <div *ngIf="!quizCreated">
-      <h2 style="color: #667eea; margin-bottom: 20px;">1. Informazioni Quiz</h2>
+    <div *ngIf="!quizCreated" class="step-section">
+      <div class="step-header">
+        <span class="step-number">1</span>
+        <h2>Informazioni Quiz</h2>
+      </div>
       
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Nome Quiz (ID):</label>
-        <input 
-          type="text" 
-          [(ngModel)]="quizName" 
-          placeholder="es: quiz-storia-2024"
-          style="width: 100%;"
-        />
-        <small style="color: #666;">Usato come identificatore (solo lettere, numeri, - e _)</small>
-      </div>
+      <form class="form-section">
+        <div class="form-group">
+          <label for="quizName" class="form-label required">Nome Quiz (ID):</label>
+          <input 
+            id="quizName"
+            type="text" 
+            [(ngModel)]="quizName"
+            name="quizName"
+            placeholder="es: quiz-storia-2024"
+            class="form-input"
+            [class.input-error]="error && !quizName.trim()"
+            maxlength="50"
+          />
+          <small class="form-hint">Identificatore univoco (solo lettere, numeri, trattini e underscore)</small>
+        </div>
 
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Titolo:</label>
-        <input 
-          type="text" 
-          [(ngModel)]="quizTitle" 
-          placeholder="es: Quiz di Storia - Seconda Guerra Mondiale"
-          style="width: 100%;"
-        />
-      </div>
+        <div class="form-group">
+          <label for="quizTitle" class="form-label required">Titolo:</label>
+          <input 
+            id="quizTitle"
+            type="text" 
+            [(ngModel)]="quizTitle"
+            name="quizTitle"
+            placeholder="es: Quiz di Storia - Seconda Guerra Mondiale"
+            class="form-input"
+            [class.input-error]="error && !quizTitle.trim()"
+            maxlength="100"
+          />
+          <small class="form-hint">Nome descrittivo che verrà mostrato agli utenti</small>
+        </div>
 
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Descrizione (opzionale):</label>
-        <textarea 
-          [(ngModel)]="quizDescription" 
-          placeholder="Breve descrizione del quiz..."
-          rows="3"
-          style="width: 100%; resize: vertical;"
-        ></textarea>
-      </div>
+        <div class="form-group">
+          <label for="quizDescription" class="form-label">Descrizione (opzionale):</label>
+          <textarea 
+            id="quizDescription"
+            [(ngModel)]="quizDescription"
+            name="quizDescription"
+            placeholder="Breve descrizione del contenuto del quiz..."
+            rows="3"
+            class="form-input"
+            maxlength="500"
+          ></textarea>
+          <small class="form-hint">Aiuta gli utenti a capire il contenuto del quiz</small>
+        </div>
+      </form>
 
-      <div style="display: flex; gap: 10px;">
-        <button class="btn btn-secondary" (click)="goBack()" style="flex: 1;">
-          ← Annulla
+      <div class="action-buttons">
+        <button type="button" class="btn btn-secondary" (click)="goBack()">
+          <span>← Annulla</span>
         </button>
         <button 
+          type="button"
           class="btn btn-primary" 
           (click)="createQuiz()" 
-          [disabled]="loading || !quizName.trim() || !quizTitle.trim()"
-          style="flex: 2;">
-          {{ loading ? '⏳ Creazione...' : '→ Continua' }}
+          [disabled]="loading || !quizName.trim() || !quizTitle.trim()">
+          <span>{{ loading ? '⏳ Creazione...' : 'Continua →' }}</span>
         </button>
       </div>
     </div>
 
     <!-- Step 2: Add Questions -->
-    <div *ngIf="quizCreated">
-      <div style="background: #f7faff; padding: 20px; border-radius: 12px; margin-bottom: 30px; border-left: 4px solid #667eea;">
-        <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 20px;">
-          <div style="flex: 1; min-width: 200px;">
-            <p style="margin: 0; font-weight: 600; font-size: 18px; color: #667eea;">🎮 {{ quizTitle }}</p>
-            <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">
-              Domande aggiunte: {{ questions.length }}
+    <div *ngIf="quizCreated" class="step-section">
+      <!-- Quiz Info Banner -->
+      <div class="info-banner">
+        <div class="info-content">
+          <div class="info-text">
+            <h3 class="info-title">🎮 {{ quizTitle }}</h3>
+            <p class="info-subtitle">
+              <span class="badge">{{ questions.length }} domande</span>
+              <span *ngIf="quizDescription" class="info-description">{{ quizDescription }}</span>
             </p>
           </div>
           
           <!-- QR Code Section -->
-          <div *ngIf="qrCodeUrl" style="text-align: center;">
-            <p style="color: #666; margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">📱 Condividi per aggiungere domande:</p>
-            <img [src]="qrCodeUrl" alt="QR Code" style="max-width: 150px; width: 100%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);" />
-            <p style="color: #999; margin: 8px 0 0 0; font-size: 11px; word-break: break-all;">{{ addQuestionUrl }}</p>
+          <div *ngIf="qrCodeUrl" class="qr-section">
+            <p class="qr-label">📱 Condividi</p>
+            <img [src]="qrCodeUrl" alt="QR Code" class="qr-code" />
+            <small class="qr-url">{{ addQuestionUrl }}</small>
           </div>
         </div>
       </div>
 
-      <h2 style="color: #667eea; margin-bottom: 20px;">2. Aggiungi Domande</h2>
+      <!-- Step Header -->
+      <div class="step-header">
+        <span class="step-number">2</span>
+        <h2>Aggiungi Domande</h2>
+      </div>
 
       <!-- Question Type Selection -->
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Tipo Domanda:</label>
-        <div style="display: flex; gap: 10px;">
+      <div class="form-group">
+        <label class="form-label">Tipo Domanda:</label>
+        <div class="button-group">
           <button 
-            class="btn"
-            [class.btn-primary]="currentQuestion.type === 'text'"
-            [class.btn-secondary]="currentQuestion.type !== 'text'"
+            type="button"
+            class="btn-toggle"
+            [class.active]="currentQuestion.type === 'text'"
             (click)="currentQuestion.type = 'text'; removeImage()"
-            style="flex: 1; padding: 12px;">
-            📝 Solo Testo
+            aria-label="Solo testo">
+            <span class="toggle-icon">📝</span>
+            <span>Solo Testo</span>
           </button>
           <button 
-            class="btn"
-            [class.btn-primary]="currentQuestion.type === 'image'"
-            [class.btn-secondary]="currentQuestion.type !== 'image'"
+            type="button"
+            class="btn-toggle"
+            [class.active]="currentQuestion.type === 'image'"
             (click)="currentQuestion.type = 'image'"
-            style="flex: 1; padding: 12px;">
-            🖼️ Testo + Foto
+            aria-label="Testo con immagine">
+            <span class="toggle-icon">🖼️</span>
+            <span>Testo + Foto</span>
           </button>
         </div>
       </div>
 
-      <!-- Image Upload (if image type) -->
-      <div *ngIf="currentQuestion.type === 'image'" style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Immagine:</label>
+      <!-- Image Upload -->
+      <div *ngIf="currentQuestion.type === 'image'" class="form-group">
+        <label class="form-label required">Immagine:</label>
         
-        <div *ngIf="!currentQuestion.imagePreview" 
-             class="image-upload-zone"
-             (click)="fileInput.click()">
-          <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
-          <p style="color: #666; margin: 0; font-weight: 500;">Clicca per caricare un'immagine</p>
-          <small style="color: #999;">PNG, JPG, GIF (max 5MB)</small>
+        <div *ngIf="!currentQuestion.imagePreview" class="image-upload-zone" (click)="fileInput.click()">
+          <div class="upload-icon">📷</div>
+          <p class="upload-text">Clicca per caricare un'immagine</p>
+          <small class="upload-hint">PNG, JPG, GIF (max 5MB)</small>
         </div>
 
-        <div *ngIf="currentQuestion.imagePreview" style="position: relative;">
-          <img [src]="currentQuestion.imagePreview" style="width: 100%; max-height: 400px; object-fit: contain; border-radius: 8px; border: 2px solid #e2e8f0;" />
+        <div *ngIf="currentQuestion.imagePreview" class="image-preview-container">
+          <img [src]="currentQuestion.imagePreview" alt="Anteprima immagine" class="image-preview" />
           <button 
+            type="button"
             (click)="removeImage()"
-            class="remove-image-btn">
+            class="remove-image-btn"
+            aria-label="Rimuovi immagine">
             ×
           </button>
         </div>
@@ -134,94 +167,104 @@
           accept="image/*"
           (change)="onImageSelect($event)"
           style="display: none;"
+          aria-label="Seleziona file immagine"
         />
       </div>
 
       <!-- Question Text -->
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Testo Domanda:</label>
+      <div class="form-group">
+        <label for="questionText" class="form-label required">Testo Domanda:</label>
         <textarea 
-          [(ngModel)]="currentQuestion.question" 
-          placeholder="Scrivi qui la domanda..."
+          id="questionText"
+          [(ngModel)]="currentQuestion.question"
+          name="questionText"
+          placeholder="Scrivi qui la tua domanda..."
           rows="3"
-          style="width: 100%; resize: vertical; font-size: 16px;"
+          class="form-input"
+          maxlength="500"
         ></textarea>
+        <small class="form-hint">Scrivi una domanda chiara e concisa</small>
       </div>
 
       <!-- Answers -->
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 12px; font-weight: 600;">Risposte:</label>
-        <div *ngFor="let answer of currentQuestion.answers; let i = index" 
+      <div class="form-group">
+        <label class="form-label required">Risposte:</label>
+        <p class="form-hint" style="margin-bottom: 16px;">💡 Seleziona il cerchio per indicare la risposta corretta</p>
+        
+        <div *ngFor="let answer of currentQuestion.answers; let i = index; trackBy: trackByIndex" 
              class="answer-input"
              [class.answer-input-correct]="currentQuestion.correct_answer === i">
           <input 
             type="radio" 
+            [id]="'correct-' + i"
             [name]="'correct'"
             [checked]="currentQuestion.correct_answer === i"
             (change)="currentQuestion.correct_answer = i"
-            style="width: 24px; height: 24px; cursor: pointer; accent-color: #48bb78;"
+            class="answer-radio"
+            [attr.aria-label]="'Seleziona risposta ' + String.fromCharCode(65 + i) + ' come corretta'"
           />
-          <div class="answer-letter"
-               [class.answer-letter-correct]="currentQuestion.correct_answer === i">
+          <label [for]="'correct-' + i" class="answer-letter" [class.answer-letter-correct]="currentQuestion.correct_answer === i">
             {{ String.fromCharCode(65 + i) }}
-          </div>
+          </label>
           <input 
-            type="text" 
-            [(ngModel)]="currentQuestion.answers[i]" 
+            type="text"
+            [id]="'answer-' + i"
+            [(ngModel)]="currentQuestion.answers[i]"
+            [name]="'answer-' + i"
             [placeholder]="'Risposta ' + (i + 1)"
-            style="flex: 1; font-size: 15px;"
+            class="answer-text-input"
+            maxlength="200"
+            [attr.aria-label]="'Testo risposta ' + String.fromCharCode(65 + i)"
           />
-          <span *ngIf="currentQuestion.correct_answer === i" class="check-mark">
+          <span *ngIf="currentQuestion.correct_answer === i" class="check-mark" aria-hidden="true">
             ✓
           </span>
         </div>
-        <small style="color: #666; display: block; margin-top: 8px;">💡 Seleziona il radio button per indicare la risposta corretta</small>
       </div>
 
       <!-- Add Question Button -->
       <button 
-        class="btn btn-success" 
+        type="button"
+        class="btn btn-success btn-large" 
         (click)="addQuestion()" 
-        [disabled]="loading"
-        style="width: 100%; margin-bottom: 30px; font-size: 18px; padding: 16px; background: #48bb78; font-weight: 600;">
-        {{ loading ? '⏳ Aggiunta...' : '➕ Aggiungi Domanda' }}
+        [disabled]="loading">
+        <span>{{ loading ? '⏳ Aggiunta in corso...' : '➕ Aggiungi Domanda' }}</span>
       </button>
 
       <!-- Questions List -->
-      <div *ngIf="questions.length > 0" style="margin-top: 30px; padding-top: 30px; border-top: 2px solid #e2e8f0;">
-        <h3 style="color: #667eea; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-          📋 Domande Aggiunte ({{ questions.length }})
+      <div *ngIf="questions.length > 0" class="questions-list">
+        <h3 class="section-title">
+          <span>📋 Domande Aggiunte</span>
+          <span class="badge badge-primary">{{ questions.length }}</span>
         </h3>
-        <div *ngFor="let q of questions; let i = index" 
-             style="background: #f7faff; padding: 16px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #667eea;">
-          <div style="display: flex; justify-content: space-between; align-items: start; gap: 15px;">
-            <div style="flex: 1;">
-              <div style="margin-bottom: 8px;">
-                <span style="background: #667eea; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; margin-right: 8px;">
-                  {{ q.type === 'image' ? '🖼️ Immagine' : '📝 Testo' }}
-                </span>
-                <span style="color: #666; font-size: 14px;">Domanda {{ i + 1 }}</span>
-              </div>
-              <strong style="color: #2d3748; font-size: 16px;">{{ q.question }}</strong>
-              <div style="margin-top: 8px; color: #666; font-size: 14px;">
-                ✅ Risposta corretta: <strong>{{ String.fromCharCode(65 + q.correct_answer) }}. {{ q.answers[q.correct_answer] }}</strong>
-              </div>
-            </div>
+        
+        <div *ngFor="let q of questions; let i = index; trackBy: trackByIndex" class="question-card">
+          <div class="question-card-header">
+            <span class="question-type-badge" [class.image-badge]="q.type === 'image'">
+              {{ q.type === 'image' ? '🖼️ Immagine' : '📝 Testo' }}
+            </span>
+            <span class="question-number">Domanda {{ i + 1 }}</span>
+          </div>
+          <p class="question-text">{{ q.question }}</p>
+          <div class="question-correct-answer">
+            <strong>✅ Risposta corretta:</strong> 
+            <span class="correct-label">{{ String.fromCharCode(65 + q.correct_answer) }}</span>
+            {{ q.answers[q.correct_answer] }}
           </div>
         </div>
       </div>
 
-      <!-- Finish Button -->
-      <div style="margin-top: 30px; display: flex; gap: 10px;">
-        <button class="btn btn-secondary" (click)="goBack()" style="flex: 1;">
-          ← Annulla
+      <!-- Action Buttons -->
+      <div class="action-buttons">
+        <button type="button" class="btn btn-secondary" (click)="goBack()">
+          <span>← Esci</span>
         </button>
         <button 
-          class="btn btn-primary" 
+          type="button"
+          class="btn btn-primary btn-large" 
           (click)="finishQuiz()" 
-          [disabled]="questions.length === 0"
-          style="flex: 2; font-size: 18px; padding: 16px;">
-          ✅ Completa Quiz ({{ questions.length }} domande)
+          [disabled]="questions.length === 0">
+          <span>✅ Completa Quiz ({{ questions.length }} domande)</span>
         </button>
       </div>
     </div>

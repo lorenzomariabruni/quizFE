@@ -60,8 +60,7 @@ export class CreateQuizComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
-    // Detect network IP for QR code
-    this.networkIp = await this.getLocalIpAddress();
+    // Don't auto-detect IP, will prompt when needed
   }
 
   async createQuiz(): Promise<void> {
@@ -85,13 +84,11 @@ export class CreateQuizComponent implements OnInit {
       next: async (response) => {
         this.quizCreated = true;
         this.createdQuizName = response.name;
-        this.success = 'Quiz creato! Ora aggiungi delle domande.';
+        this.success = 'Quiz creato con successo! Ora puoi aggiungere le domande.';
         this.loading = false;
 
-        // Generate QR code for this page
-        const port = window.location.port ? `:${window.location.port}` : '';
-        this.addQuestionUrl = `http://${this.networkIp}${port}/create-quiz?quiz=${this.createdQuizName}`;
-        this.qrCodeUrl = await QRCode.toDataURL(this.addQuestionUrl, { width: 300 });
+        // Prompt for IP to generate QR code
+        await this.generateQRCode();
       },
       error: (err) => {
         this.error = err.error?.detail || 'Errore nella creazione del quiz';
@@ -100,45 +97,34 @@ export class CreateQuizComponent implements OnInit {
     });
   }
 
-  private async getLocalIpAddress(): Promise<string> {
-    try {
-      const pc = new RTCPeerConnection({ iceServers: [] });
-      pc.createDataChannel('');
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
+  private async generateQRCode(): Promise<void> {
+    // Always prompt for IP
+    this.networkIp = await this.promptForIp();
+    
+    const port = window.location.port ? `:${window.location.port}` : '';
+    this.addQuestionUrl = `http://${this.networkIp}${port}/create-quiz?quiz=${this.createdQuizName}`;
+    this.qrCodeUrl = await QRCode.toDataURL(this.addQuestionUrl, { 
+      width: 300,
+      margin: 2,
+      color: {
+        dark: '#667eea',
+        light: '#ffffff'
+      }
+    });
+  }
 
-      return new Promise<string>((resolve) => {
-        let resolved = false;
-
-        pc.onicecandidate = (event) => {
-          if (resolved) return;
-
-          if (event.candidate) {
-            const candidate = event.candidate.candidate;
-            const ipRegex = /([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/;
-            const match = candidate.match(ipRegex);
-
-            if (match && match[1]) {
-              const ip = match[1];
-              if (ip !== '0.0.0.0' && !ip.startsWith('127.')) {
-                resolved = true;
-                pc.close();
-                resolve(ip);
-              }
-            }
-          }
-        };
-
-        setTimeout(() => {
-          if (!resolved) {
-            pc.close();
-            resolve(window.location.hostname);
-          }
-        }, 3000);
-      });
-    } catch (error) {
-      return window.location.hostname;
-    }
+  private promptForIp(): string {
+    const defaultIp = window.location.hostname;
+    const manualIp = prompt(
+      '🌐 Inserisci l\'IP di questa macchina per generare il QR code\n\n' +
+      'Questo permetterà ad altri dispositivi di accedere alla pagina.\n\n' +
+      'Per trovare il tuo IP:\n' +
+      '• Mac/Linux: ifconfig | grep "inet "\n' +
+      '• Windows: ipconfig\n\n' +
+      'Lascia vuoto per usare: ' + defaultIp,
+      defaultIp
+    );
+    return manualIp && manualIp.trim() ? manualIp.trim() : defaultIp;
   }
 
   onImageSelect(event: Event): void {
@@ -147,16 +133,17 @@ export class CreateQuizComponent implements OnInit {
       const file = input.files[0];
       
       if (!file.type.startsWith('image/')) {
-        this.error = 'Per favore seleziona un file immagine';
+        this.error = 'Per favore seleziona un file immagine valido (PNG, JPG, GIF)';
         return;
       }
 
       if (file.size > 5 * 1024 * 1024) {
-        this.error = 'Immagine troppo grande (max 5MB)';
+        this.error = 'Immagine troppo grande. La dimensione massima è 5MB.';
         return;
       }
 
       this.currentQuestion.image = file;
+      this.error = '';
 
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -172,24 +159,33 @@ export class CreateQuizComponent implements OnInit {
   }
 
   addQuestion(): void {
+    // Clear previous messages
+    this.error = '';
+    this.success = '';
+
+    // Validate question
     if (!this.currentQuestion.question.trim()) {
       this.error = 'Il testo della domanda è obbligatorio';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    if (this.currentQuestion.answers.some(a => !a.trim())) {
-      this.error = 'Tutte le risposte devono essere compilate';
+    // Validate answers
+    const emptyAnswers = this.currentQuestion.answers.filter(a => !a.trim());
+    if (emptyAnswers.length > 0) {
+      this.error = 'Tutte le 4 risposte devono essere compilate';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
+    // Validate image if type is image
     if (this.currentQuestion.type === 'image' && !this.currentQuestion.image) {
       this.error = 'Seleziona un\'immagine per questa domanda';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
     this.loading = true;
-    this.error = '';
-    this.success = '';
 
     const host = window.location.hostname;
     const apiUrl = `http://${host}:8000/api/quizzes/${this.createdQuizName}/questions`;
@@ -210,7 +206,7 @@ export class CreateQuizComponent implements OnInit {
     this.http.post<any>(apiUrl, formData).subscribe({
       next: (response) => {
         this.questions.push({...this.currentQuestion, id: response.question_id});
-        this.success = `Domanda aggiunta! (${this.questions.length} totali)`;
+        this.success = `✅ Domanda ${this.questions.length} aggiunta con successo!`;
         
         // Reset form
         this.currentQuestion = {
@@ -221,28 +217,34 @@ export class CreateQuizComponent implements OnInit {
         };
         
         this.loading = false;
-
-        // Scroll to top to see success message
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
       error: (err) => {
-        this.error = err.error?.detail || 'Errore nell\'aggiunta della domanda';
+        this.error = err.error?.detail || 'Errore nell\'aggiunta della domanda. Riprova.';
         this.loading = false;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     });
   }
 
   finishQuiz(): void {
     if (this.questions.length === 0) {
-      this.error = 'Aggiungi almeno una domanda prima di completare';
+      this.error = 'Aggiungi almeno una domanda prima di completare il quiz';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
 
-    this.router.navigate(['/']);
+    if (confirm(`Hai aggiunto ${this.questions.length} domande. Confermi di voler completare il quiz?`)) {
+      this.router.navigate(['/']);
+    }
   }
 
   goBack(): void {
-    if (confirm('Sei sicuro? Le modifiche non salvate andranno perse.')) {
+    const message = this.quizCreated 
+      ? `Sei sicuro di voler uscire? Hai già creato il quiz "${this.quizTitle}" con ${this.questions.length} domande.`
+      : 'Sei sicuro di voler annullare? I dati inseriti andranno persi.';
+    
+    if (confirm(message)) {
       this.router.navigate(['/']);
     }
   }
