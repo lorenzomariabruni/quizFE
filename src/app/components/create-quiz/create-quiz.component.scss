@@ -1,1 +1,81 @@
-// Styles inherited from global styles.scss
+.image-upload-zone {
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #667eea;
+    background: #f7faff;
+  }
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #f56565;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s;
+
+  &:hover {
+    background: #e53e3e;
+    transform: scale(1.1);
+  }
+}
+
+.answer-input {
+  margin-bottom: 12px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  background: #f7faff;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #e2e8f0;
+  }
+}
+
+.answer-input-correct {
+  border-color: #48bb78;
+  background: #f0fff4;
+}
+
+.answer-letter {
+  width: 32px;
+  height: 32px;
+  background: #667eea;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.answer-letter-correct {
+  background: #48bb78;
+}
+
+.check-mark {
+  color: #48bb78;
+  font-size: 20px;
+  font-weight: 700;
+  flex-shrink: 0;
+}

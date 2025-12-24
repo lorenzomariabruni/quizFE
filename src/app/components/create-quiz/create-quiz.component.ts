@@ -51,6 +51,9 @@ export class CreateQuizComponent implements OnInit {
   error = '';
   success = '';
 
+  // Expose String to template
+  String = String;
+
   constructor(
     private router: Router,
     private http: HttpClient

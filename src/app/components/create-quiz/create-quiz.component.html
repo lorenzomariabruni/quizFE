@@ -112,10 +112,8 @@
         <label style="display: block; margin-bottom: 8px; font-weight: 600;">Immagine:</label>
         
         <div *ngIf="!currentQuestion.imagePreview" 
-             style="border: 2px dashed #cbd5e0; border-radius: 8px; padding: 30px; text-align: center; cursor: pointer; transition: all 0.2s;"
-             (click)="fileInput.click()"
-             (mouseover)="$event.currentTarget.style.borderColor='#667eea'"
-             (mouseout)="$event.currentTarget.style.borderColor='#cbd5e0'">
+             class="image-upload-zone"
+             (click)="fileInput.click()">
           <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
           <p style="color: #666; margin: 0; font-weight: 500;">Clicca per caricare un'immagine</p>
           <small style="color: #999;">PNG, JPG, GIF (max 5MB)</small>
@@ -125,9 +123,7 @@
           <img [src]="currentQuestion.imagePreview" style="width: 100%; max-height: 400px; object-fit: contain; border-radius: 8px; border: 2px solid #e2e8f0;" />
           <button 
             (click)="removeImage()"
-            style="position: absolute; top: 10px; right: 10px; background: #f56565; color: white; border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 20px; font-weight: 700; box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: all 0.2s;"
-            (mouseover)="$event.currentTarget.style.background='#e53e3e'"
-            (mouseout)="$event.currentTarget.style.background='#f56565'">
+            class="remove-image-btn">
             ×
           </button>
         </div>
@@ -156,9 +152,8 @@
       <div style="margin-bottom: 20px;">
         <label style="display: block; margin-bottom: 12px; font-weight: 600;">Risposte:</label>
         <div *ngFor="let answer of currentQuestion.answers; let i = index" 
-             style="margin-bottom: 12px; display: flex; gap: 12px; align-items: center; padding: 12px; background: #f7faff; border-radius: 8px; border: 2px solid transparent;"
-             [style.border-color]="currentQuestion.correct_answer === i ? '#48bb78' : 'transparent'"
-             [style.background]="currentQuestion.correct_answer === i ? '#f0fff4' : '#f7faff'">
+             class="answer-input"
+             [class.answer-input-correct]="currentQuestion.correct_answer === i">
           <input 
             type="radio" 
             [name]="'correct'"
@@ -166,8 +161,8 @@
             (change)="currentQuestion.correct_answer = i"
             style="width: 24px; height: 24px; cursor: pointer; accent-color: #48bb78;"
           />
-          <div style="width: 32px; height: 32px; background: #667eea; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;"
-               [style.background]="currentQuestion.correct_answer === i ? '#48bb78' : '#667eea'">
+          <div class="answer-letter"
+               [class.answer-letter-correct]="currentQuestion.correct_answer === i">
             {{ String.fromCharCode(65 + i) }}
           </div>
           <input 
@@ -176,7 +171,7 @@
             [placeholder]="'Risposta ' + (i + 1)"
             style="flex: 1; font-size: 15px;"
           />
-          <span *ngIf="currentQuestion.correct_answer === i" style="color: #48bb78; font-size: 20px; font-weight: 700; flex-shrink: 0;">
+          <span *ngIf="currentQuestion.correct_answer === i" class="check-mark">
             ✓
           </span>
         </div>
