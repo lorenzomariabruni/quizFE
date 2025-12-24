@@ -33,6 +33,7 @@ export class HostComponent implements OnInit, OnDestroy {
   leaderboard: any[] = [];
   correctAnswer = -1;
   qrCodeUrl = '';
+  joinUrl = '';
 
   // Expose to template
   String = String;
@@ -48,9 +49,12 @@ export class HostComponent implements OnInit, OnDestroy {
     // Create session
     this.socketService.createSession(this.sessionId);
 
-    // Generate QR Code
-    const joinUrl = `${window.location.origin}/play/${this.sessionId}`;
-    this.qrCodeUrl = await QRCode.toDataURL(joinUrl, { width: 300 });
+    // Get network IP and generate QR Code
+    const host = window.location.hostname;
+    const port = window.location.port ? `:${window.location.port}` : '';
+    this.joinUrl = `http://${host}${port}/play/${this.sessionId}`;
+    
+    this.qrCodeUrl = await QRCode.toDataURL(this.joinUrl, { width: 300 });
 
     // Listen to events
     this.subscriptions.push(
