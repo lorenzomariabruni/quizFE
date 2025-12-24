@@ -63,6 +63,11 @@ export class CreateQuizComponent implements OnInit {
     // Don't auto-detect IP, will prompt when needed
   }
 
+  // TrackBy function for ngFor performance
+  trackByIndex(index: number): number {
+    return index;
+  }
+
   async createQuiz(): Promise<void> {
     if (!this.quizName.trim() || !this.quizTitle.trim()) {
       this.error = 'Nome e titolo quiz sono obbligatori';

@@ -177,7 +177,7 @@ textarea.form-input {
 .info-content {
   display: flex;
   justify-content: space-between;
-  align-items: start;
+  align-items: flex-start; // Changed from 'start' to 'flex-start'
   flex-wrap: wrap;
   gap: 24px;
 }
