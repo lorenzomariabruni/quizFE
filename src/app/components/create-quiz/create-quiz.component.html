@@ -126,13 +126,20 @@
       <!-- Action Buttons -->
       <div class="action-buttons">
         <button type="button" class="btn btn-secondary" (click)="goBack()">
-          <span>← Annulla</span>
+          <span>← Torna Home</span>
+        </button>
+        <button 
+          type="button"
+          class="btn btn-success btn-large" 
+          (click)="playQuiz()"
+          [disabled]="questionCount === 0">
+          <span>🎮 Gioca Quiz</span>
         </button>
         <button 
           type="button"
           class="btn btn-primary btn-large" 
           (click)="finishQuiz()">
-          <span>✅ Completa Quiz</span>
+          <span>✅ Salva e Chiudi</span>
         </button>
       </div>
     </div>

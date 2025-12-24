@@ -364,7 +364,13 @@ textarea.form-input {
 .btn-primary {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  flex: 2;
+  flex: 1;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  flex: 1;
 }
 
 .btn-secondary {

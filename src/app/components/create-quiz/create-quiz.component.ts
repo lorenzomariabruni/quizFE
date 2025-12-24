@@ -145,6 +145,21 @@ export class CreateQuizComponent implements OnInit, OnDestroy {
     return manualIp && manualIp.trim() ? manualIp.trim() : defaultIp;
   }
 
+  playQuiz(): void {
+    if (this.questionCount === 0) {
+      alert('⚠️ Devi aggiungere almeno una domanda prima di giocare!');
+      return;
+    }
+
+    // Stop polling
+    if (this.pollingSubscription) {
+      this.pollingSubscription.unsubscribe();
+    }
+
+    // Navigate to host page with quiz name
+    this.router.navigate(['/host', this.createdQuizName]);
+  }
+
   finishQuiz(): void {
     if (this.questionCount === 0) {
       if (!confirm('Non sono state aggiunte domande. Vuoi davvero completare il quiz?')) {
