@@ -49,7 +49,7 @@ Pagina iniziale con due opzioni:
 
 #### 4. Socket Service
 Gestisce tutte le comunicazioni WebSocket:
-- Connessione al server
+- **Connessione dinamica al server** (usa hostname corrente, non localhost hardcoded)
 - Invio eventi (emit)
 - Ricezione eventi (on)
 - Observable-based per integrazione Angular
@@ -75,8 +75,22 @@ Gestisce tutte le comunicazioni WebSocket:
 ### Prerequisiti
 - Node.js 18+ (raccomandato LTS)
 - npm o yarn
+- Python 3.8+ (per il backend)
 
-### Setup
+### Setup Backend
+
+```bash
+# In una finestra terminale
+cd quizBE
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# Avvia backend
+uvicorn app.main:socket_app --reload --host 0.0.0.0 --port 8000
+```
+
+### Setup Frontend
 
 ```bash
 # Clona il repository
@@ -87,17 +101,9 @@ cd quizFE
 npm install
 ```
 
-### Configurazione
-
-Modifica l'URL del server in `src/app/services/socket.service.ts`:
-
-```typescript
-private readonly serverUrl = 'http://localhost:8000'; // Cambia se necessario
-```
-
 ### Avvio Applicazione
 
-**IMPORTANTE**: Per permettere l'accesso da altri dispositivi sulla rete locale, avvia con:
+**IMPORTANTE**: Per permettere l'accesso da altri dispositivi sulla rete locale:
 
 ```bash
 # Esponi su tutte le interfacce di rete
@@ -110,14 +116,47 @@ L'applicazione sarà disponibile su:
 
 **Il QR code verrà generato automaticamente con l'IP di rete rilevato!**
 
-### Build per Produzione
+### Trovare il tuo IP locale
 
+**Mac/Linux:**
 ```bash
-# Build ottimizzato
-npm run build
-
-# Output in dist/quiz-fe/
+ifconfig | grep "inet " | grep -v 127.0.0.1
 ```
+
+**Windows:**
+```bash
+ipconfig
+```
+
+Cerca l'indirizzo IPv4 della tua scheda WiFi/Ethernet (es. 192.168.1.100)
+
+## Configurazione Multi-Dispositivo
+
+### Setup Completo:
+
+1. **Avvia Backend** (porta 8000):
+   ```bash
+   cd quizBE
+   uvicorn app.main:socket_app --reload --host 0.0.0.0 --port 8000
+   ```
+
+2. **Avvia Frontend** (porta 4200):
+   ```bash
+   cd quizFE
+   ng serve --host 0.0.0.0
+   ```
+
+3. **Sul PC Host**: Vai su http://localhost:4200
+
+4. **Sui dispositivi mobili**: 
+   - Scansiona il QR code
+   - OPPURE vai su http://[IP_DEL_PC]:4200
+
+**Nota importante**: Il frontend si connetterà automaticamente al backend usando lo stesso IP/hostname, quindi:
+- Se apri da `http://192.168.1.100:4200` si connetterà a `http://192.168.1.100:8000`
+- Se apri da `http://localhost:4200` si connetterà a `http://localhost:8000`
+
+Questo significa che **tutti i dispositivi devono usare lo stesso IP del PC host**!
 
 ## Rilevamento IP di Rete
 
@@ -125,8 +164,8 @@ Il componente Host usa **WebRTC** per rilevare automaticamente l'IP locale della
 
 - Rileva IP privato (es. 192.168.x.x, 10.x.x.x)
 - Esclude automaticamente localhost (127.0.0.1)
-- Fallback a hostname se il rilevamento fallisce
-- Timeout di 2 secondi per garantire performance
+- Timeout di 3 secondi
+- Se il rilevamento fallisce, chiede di inserire l'IP manualmente
 
 Questo permette ai dispositivi mobili sulla stessa rete di connettersi facilmente scansionando il QR code!
 
@@ -147,126 +186,56 @@ src/
 └── index.html
 ```
 
-## Routing
-
-- `/` - Homepage
-- `/host` - Interfaccia host
-- `/play/:sessionId` - Interfaccia giocatore
-
-## Features UI
-
-### Design
-- Gradient background moderno
-- Card-based layout
-- Responsive design
-- Animazioni smooth
-- Feedback visivi immediati
-
-### Timer
-- Visualizzazione in tempo reale
-- Warning state (ultimi 3 secondi)
-- Animazione pulse
-- Sincronizzato tra tutti i client
-
-### Risposte
-- Hover effect
-- Selezione visuale
-- Colori per correttezza (verde/rosso)
-- Disabilitazione post-invio
-
-### Classifica
-- Medaglie per top 3
-- Evidenziazione giocatore corrente
-- Punteggio in tempo reale
-- Conteggio risposte corrette
-
-## WebSocket Events
-
-### Emessi dal Client
-- `create_session` (host)
-- `join_session` (player)
-- `start_game` (host)
-- `submit_answer` (player)
-
-### Ricevuti dal Server
-- `session_created`
-- `joined_session`
-- `player_joined`
-- `game_started`
-- `new_question`
-- `timer_update`
-- `answer_submitted`
-- `question_results`
-- `game_over`
-
-## Customizzazione
-
-### Colori
-Modifica `src/styles.scss`:
-
-```scss
-$primary-color: #667eea;
-$success-color: #48bb78;
-$danger-color: #f56565;
-```
-
-### Timer
-Modifica durata in `host.component.ts` e `player.component.ts`
-
-### QR Code
-Personalizza dimensione e stile in `host.component.ts`:
-
-```typescript
-await QRCode.toDataURL(joinUrl, { 
-  width: 300,
-  margin: 2,
-  color: {
-    dark: '#667eea',
-    light: '#ffffff'
-  }
-});
-```
-
-## Estensioni Future
-
-- Avatar giocatori personalizzati
-- Modalità team
-- Chat in-game
-- Power-ups
-- Temi personalizzabili
-- Salvataggio partite
-- Statistiche giocatore
-- Modalità practice
-
 ## Troubleshooting
 
+### Backend non raggiungibile da mobile
+
+**Problema**: Il mobile non riesce a connettersi al backend
+
+**Soluzioni**:
+1. Verifica che il backend sia avviato con `--host 0.0.0.0`
+2. Verifica che il firewall non blocchi la porta 8000:
+   ```bash
+   # Mac
+   sudo lsof -i :8000
+   
+   # Linux
+   sudo ufw allow 8000
+   
+   # Windows
+   # Aggiungi eccezione nel Windows Firewall per porta 8000
+   ```
+3. Testa la connessione dal mobile: http://[IP_PC]:8000/health
+
+### QR Code mostra IP errato
+
+**Problema**: Il QR code mostra localhost o IP sbagliato
+
+**Soluzioni**:
+1. Assicurati di avviare con: `ng serve --host 0.0.0.0`
+2. Verifica che non ci siano VPN attive
+3. Se richiesto, inserisci manualmente l'IP corretto
+4. Ricarica la pagina host
+
 ### WebSocket non si connette
-1. Verifica che il backend sia avviato
-2. Controlla URL in `socket.service.ts`
-3. Verifica CORS nel backend
-4. Ispeziona console browser per errori
 
-### QR Code mostra localhost
-1. **Assicurati di avviare con**: `ng serve --host 0.0.0.0`
-2. Verifica che il firewall non blocchi la porta 4200
-3. Controlla la console per l'IP rilevato
-4. Prova a ricaricare la pagina host
+**Problema**: Errori di connessione WebSocket
 
-### QR Code non appare
-- Verifica installazione libreria `qrcode`
-- Controlla console per errori
-- Verifica che il componente sia inizializzato
+**Soluzioni**:
+1. Verifica che backend e frontend usino lo stesso IP
+2. Controlla console browser per errori
+3. Verifica CORS nel backend (`.env` deve includere l'IP)
+4. Controlla che entrambi i servizi siano in esecuzione
 
-### Styling non applicato
-- Verifica `styles.scss` sia incluso in `angular.json`
-- Esegui `ng serve` dopo modifiche
-- Pulisci cache browser
+### Device sulla stessa rete ma non si connette
 
-### IP non viene rilevato correttamente
-- WebRTC potrebbe essere bloccato dal browser
-- Prova ad aprire in modalità incognito
-- Verifica permessi browser
-- Come fallback, modifica manualmente `networkIp` nel codice
+**Checklist**:
+- [ ] Backend avviato con `--host 0.0.0.0`
+- [ ] Frontend avviato con `--host 0.0.0.0`
+- [ ] Firewall non blocca porte 4200 e 8000
+- [ ] Dispositivi sulla stessa rete WiFi
+- [ ] IP corretto nel QR code
+- [ ] Backend raggiungibile: `curl http://[IP]:8000/health`
 
 ## Performance
 

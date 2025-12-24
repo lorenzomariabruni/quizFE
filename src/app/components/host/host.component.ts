@@ -51,7 +51,8 @@ export class HostComponent implements OnInit, OnDestroy {
     this.socketService.createSession(this.sessionId);
 
     // Get network IP
-    await this.detectNetworkIp();
+    this.networkIp = await this.getLocalIpAddress();
+    console.log('Detected IP:', this.networkIp);
 
     // Generate QR Code with network IP
     const port = window.location.port ? `:${window.location.port}` : '';
@@ -95,49 +96,77 @@ export class HostComponent implements OnInit, OnDestroy {
     );
   }
 
-  private async detectNetworkIp(): Promise<void> {
-    // Try to detect network IP using WebRTC
-    return new Promise((resolve) => {
-      const pc = new RTCPeerConnection({ iceServers: [] });
+  private async getLocalIpAddress(): Promise<string> {
+    try {
+      // Create RTCPeerConnection
+      const pc = new RTCPeerConnection({
+        iceServers: []
+      });
+
+      // Create a dummy data channel
       pc.createDataChannel('');
-      
-      pc.createOffer().then(offer => pc.setLocalDescription(offer));
-      
-      pc.onicecandidate = (ice) => {
-        if (!ice || !ice.candidate || !ice.candidate.candidate) {
-          pc.close();
-          resolve();
-          return;
-        }
-        
-        const ipRegex = /([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/;
-        const ipMatch = ipRegex.exec(ice.candidate.candidate);
-        
-        if (ipMatch && ipMatch[1]) {
-          const detectedIp = ipMatch[1];
-          // Skip localhost and 0.0.0.0
-          if (detectedIp !== '127.0.0.1' && detectedIp !== '0.0.0.0') {
-            this.networkIp = detectedIp;
+
+      // Create offer and set as local description
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      // Wait for ICE candidate
+      return new Promise<string>((resolve) => {
+        let resolved = false;
+
+        pc.onicecandidate = (event) => {
+          if (resolved) return;
+
+          if (event.candidate) {
+            const candidate = event.candidate.candidate;
+            console.log('ICE Candidate:', candidate);
+
+            // Extract IP from candidate string
+            // Format: "candidate:... typ host" contains the local IP
+            const ipRegex = /([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/;
+            const match = candidate.match(ipRegex);
+
+            if (match && match[1]) {
+              const ip = match[1];
+              // Skip loopback and invalid IPs
+              if (ip !== '0.0.0.0' && !ip.startsWith('127.')) {
+                console.log('Found valid IP:', ip);
+                resolved = true;
+                this.networkIp = ip;
+                pc.close();
+                resolve(ip);
+              }
+            }
+          }
+        };
+
+        // Fallback timeout
+        setTimeout(() => {
+          if (!resolved) {
+            console.warn('Could not detect IP via WebRTC, using hostname');
             pc.close();
-            resolve();
+            const hostname = window.location.hostname;
+            resolve(hostname === 'localhost' ? this.promptForIp() : hostname);
           }
-        }
-      };
-      
-      // Fallback dopo 2 secondi
-      setTimeout(() => {
-        if (!this.networkIp) {
-          // Usa l'hostname come fallback
-          this.networkIp = window.location.hostname;
-          if (this.networkIp === 'localhost' || this.networkIp === '127.0.0.1') {
-            this.networkIp = 'localhost';
-            console.warn('Non riesco a rilevare l\'IP di rete. Assicurati di avviare con: ng serve --host 0.0.0.0');
-          }
-        }
-        pc.close();
-        resolve();
-      }, 2000);
-    });
+        }, 3000);
+      });
+    } catch (error) {
+      console.error('Error detecting IP:', error);
+      const hostname = window.location.hostname;
+      return hostname === 'localhost' ? this.promptForIp() : hostname;
+    }
+  }
+
+  private promptForIp(): string {
+    const manualIp = prompt(
+      'Non riesco a rilevare automaticamente l\'IP.\n\n' +
+      'Inserisci manualmente l\'IP di questa macchina sulla rete locale\n' +
+      '(es. 192.168.1.100):\n\n' +
+      'Puoi trovarlo con:\n' +
+      '- Mac/Linux: ifconfig | grep "inet "\n' +
+      '- Windows: ipconfig'
+    );
+    return manualIp && manualIp.trim() ? manualIp.trim() : 'localhost';
   }
 
   startGame(): void {

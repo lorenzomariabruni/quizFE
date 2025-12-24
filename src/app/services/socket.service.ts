@@ -7,9 +7,16 @@ import { Observable } from 'rxjs';
 })
 export class SocketService {
   private socket: Socket;
-  private readonly serverUrl = 'http://localhost:8000';
+  private serverUrl: string;
 
   constructor() {
+    // Use current host instead of hardcoded localhost
+    const host = window.location.hostname;
+    const port = '8000'; // Backend port
+    this.serverUrl = `http://${host}:${port}`;
+
+    console.log('Connecting to backend at:', this.serverUrl);
+
     this.socket = io(this.serverUrl, {
       transports: ['websocket', 'polling']
     });
@@ -20,6 +27,10 @@ export class SocketService {
 
     this.socket.on('disconnect', () => {
       console.log('Disconnected from server');
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('Connection error:', error);
     });
   }
 
