@@ -1,7 +1,11 @@
 <div class="container">
   <!-- Connection Status Indicator -->
-  <div *ngIf="joined && !connectionStatus" style="position: fixed; top: 10px; right: 10px; background: #f56565; color: white; padding: 10px 20px; border-radius: 8px; font-weight: 600; z-index: 1000;">
-    ⚠️ Riconnessione in corso...
+  <div *ngIf="joined && !connectionStatus" 
+       style="position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: #f56565; color: white; padding: 12px 24px; border-radius: 8px; font-weight: 600; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.2); text-align: center;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <div style="width: 16px; height: 16px; border: 2px solid white; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+      <span>Riconnessione in corso...</span>
+    </div>
   </div>
 
   <!-- Join Form -->
@@ -17,9 +21,9 @@
     </div>
 
     <div style="text-align: center;">
-      <button class="btn btn-primary" (click)="joinGame()" [disabled]="!playerName.trim()"
+      <button class="btn btn-primary" (click)="joinGame()" [disabled]="!playerName.trim() || isJoining"
               style="font-size: 18px; padding: 16px 32px; width: 100%;">
-        🚀 Entra nel Gioco
+        {{ isJoining ? '⏳ Connessione...' : '🚀 Entra nel Gioco' }}
       </button>
     </div>
   </div>
@@ -104,3 +108,9 @@
     </div>
   </div>
 </div>
+
+<style>
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>

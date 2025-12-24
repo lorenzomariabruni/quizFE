@@ -13,7 +13,6 @@ export class SocketService {
 
   // Store session info for reconnection
   private sessionInfo: { sessionId: string; playerName: string } | null = null;
-  private isReconnecting = false;
 
   constructor() {
     // Use current host instead of hardcoded localhost
@@ -29,43 +28,46 @@ export class SocketService {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      timeout: 20000
+      timeout: 20000,
+      autoConnect: true
     });
 
     this.socket.on('connect', () => {
-      console.log('Connected to server:', this.socket.id);
+      console.log('✅ Connected to server:', this.socket.id);
       this.connectionStatus.next(true);
       
-      // Auto-rejoin session if reconnecting
-      if (this.sessionInfo && this.isReconnecting) {
-        console.log('Reconnecting to session:', this.sessionInfo);
-        this.socket.emit('join_session', {
-          session_id: this.sessionInfo.sessionId,
-          player_name: this.sessionInfo.playerName
-        });
+      // Auto-rejoin session if we have stored info
+      if (this.sessionInfo) {
+        console.log('🔄 Auto-rejoining session:', this.sessionInfo);
+        setTimeout(() => {
+          this.socket.emit('join_session', {
+            session_id: this.sessionInfo!.sessionId,
+            player_name: this.sessionInfo!.playerName
+          });
+        }, 100); // Small delay to ensure socket is fully ready
       }
-      this.isReconnecting = false;
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('Disconnected from server:', reason);
+      console.log('❌ Disconnected from server:', reason);
       this.connectionStatus.next(false);
-      if (this.sessionInfo) {
-        this.isReconnecting = true;
-      }
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('Connection error:', error);
+      console.error('🔴 Connection error:', error);
       this.connectionStatus.next(false);
     });
 
     this.socket.on('reconnect_attempt', (attemptNumber) => {
-      console.log('Reconnection attempt:', attemptNumber);
+      console.log('🔄 Reconnection attempt #' + attemptNumber);
     });
 
     this.socket.on('reconnect', (attemptNumber) => {
-      console.log('Reconnected after', attemptNumber, 'attempts');
+      console.log('✅ Reconnected after', attemptNumber, 'attempts');
+    });
+
+    this.socket.on('reconnect_failed', () => {
+      console.error('❌ Reconnection failed');
     });
   }
 
@@ -74,7 +76,7 @@ export class SocketService {
     this.sessionInfo = { sessionId, playerName };
     // Store in localStorage for page refresh recovery
     localStorage.setItem('quiz_session', JSON.stringify(this.sessionInfo));
-    console.log('Session info stored:', this.sessionInfo);
+    console.log('💾 Session info stored:', this.sessionInfo);
   }
 
   // Get stored session info
@@ -87,8 +89,10 @@ export class SocketService {
     if (stored) {
       try {
         this.sessionInfo = JSON.parse(stored);
+        console.log('📦 Session info loaded from storage:', this.sessionInfo);
         return this.sessionInfo;
       } catch (e) {
+        console.error('❌ Failed to parse stored session');
         localStorage.removeItem('quiz_session');
       }
     }
@@ -99,11 +103,12 @@ export class SocketService {
   clearSessionInfo(): void {
     this.sessionInfo = null;
     localStorage.removeItem('quiz_session');
+    console.log('🗑️ Session info cleared');
   }
 
   // Emit events
   emit(event: string, data: any): void {
-    console.log('Emitting event:', event, data);
+    console.log('📤 Emitting:', event, data);
     this.socket.emit(event, data);
   }
 
@@ -111,7 +116,7 @@ export class SocketService {
   on<T>(event: string): Observable<T> {
     return new Observable(observer => {
       this.socket.on(event, (data: T) => {
-        console.log('Received event:', event, data);
+        console.log('📥 Received:', event, data);
         observer.next(data);
       });
 
@@ -132,7 +137,7 @@ export class SocketService {
   }
 
   joinSession(sessionId: string, playerName: string): void {
-    console.log('Joining session:', sessionId, playerName);
+    console.log('🎮 Joining session:', sessionId, playerName);
     this.setSessionInfo(sessionId, playerName);
     this.emit('join_session', { session_id: sessionId, player_name: playerName });
   }

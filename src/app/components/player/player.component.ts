@@ -35,6 +35,7 @@ export class PlayerComponent implements OnInit, OnDestroy {
   isReconnected = false;
   connectionStatus = true;
   isJoining = false;
+  reconnectionAttempts = 0;
 
   // Expose to template
   String = String;
@@ -48,26 +49,29 @@ export class PlayerComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.sessionId = this.route.snapshot.paramMap.get('sessionId') || '';
-    console.log('Player component initialized with session:', this.sessionId);
+    console.log('🎯 Player component initialized with session:', this.sessionId);
 
     // Check for existing session in localStorage
     const storedSession = this.socketService.getSessionInfo();
     if (storedSession && storedSession.sessionId === this.sessionId) {
       this.playerName = storedSession.playerName;
-      console.log('Found stored session, attempting auto-rejoin for:', this.playerName);
-      // Don't set joined=true yet, wait for confirmation
+      this.joined = true; // Mark as joined since we're recovering
+      console.log('♻️ Recovering previous session for:', this.playerName);
     }
 
     // Monitor connection status
     this.subscriptions.push(
       this.socketService.connectionStatus$.subscribe(connected => {
+        const wasDisconnected = !this.connectionStatus;
         this.connectionStatus = connected;
-        console.log('Connection status changed:', connected);
+        console.log('🔌 Connection status:', connected ? 'CONNECTED' : 'DISCONNECTED');
         
-        // If reconnected and we have stored session, try to rejoin
-        if (connected && storedSession && storedSession.sessionId === this.sessionId && !this.joined) {
-          console.log('Connection restored, auto-rejoining...');
-          this.socketService.joinSession(this.sessionId, this.playerName);
+        // Reset reconnection attempts on successful connection
+        if (connected && wasDisconnected) {
+          this.reconnectionAttempts = 0;
+          console.log('✅ Connection restored!');
+        } else if (!connected) {
+          this.reconnectionAttempts++;
         }
       })
     );
@@ -75,37 +79,38 @@ export class PlayerComponent implements OnInit, OnDestroy {
     // Listen to events
     this.subscriptions.push(
       this.socketService.on<any>('joined_session').subscribe((data) => {
-        console.log('Joined session event received:', data);
+        console.log('✅ Joined session successfully:', data);
         this.joined = true;
         this.isJoining = false;
         this.isReconnected = data.reconnected || false;
         
         if (this.isReconnected) {
-          console.log('Reconnected! Game state:', data.game_state);
+          console.log('♻️ Reconnected! Game state:', data.game_state);
           this.gameState = data.game_state || 'waiting';
         }
       }),
 
       this.socketService.on<any>('error').subscribe(data => {
-        console.error('Error from server:', data.message);
+        console.error('❌ Error from server:', data.message);
         this.isJoining = false;
         
         if (data.message === 'Session not found') {
           alert('Sessione non trovata! Verifica il codice.');
-        } else if (data.message === 'Game already started') {
+        } else if (data.message === 'Game already started' && !this.joined) {
           alert('Il gioco è già iniziato. Non puoi più unirti.');
         } else if (!data.message.includes('Already answered')) {
-          alert(data.message);
+          // Don't show alert for other errors during reconnection
+          console.warn('Server error (not showing to user):', data.message);
         }
       }),
 
       this.socketService.on<any>('game_started').subscribe(() => {
-        console.log('Game started event received');
+        console.log('🎮 Game started!');
         this.gameState = 'playing';
       }),
 
       this.socketService.on<Question>('new_question').subscribe(question => {
-        console.log('New question received:', question);
+        console.log('❓ New question received:', question.question);
         this.currentQuestion = question;
         this.selectedAnswer = -1;
         this.answered = question.already_answered || false;
@@ -113,7 +118,7 @@ export class PlayerComponent implements OnInit, OnDestroy {
         this.lastResult = null;
         
         if (this.answered) {
-          console.log('Already answered this question');
+          console.log('⏭️ Already answered this question');
         }
       }),
 
@@ -122,33 +127,33 @@ export class PlayerComponent implements OnInit, OnDestroy {
       }),
 
       this.socketService.on<any>('answer_submitted').subscribe(data => {
-        console.log('Answer submitted confirmation:', data);
+        console.log('✅ Answer submitted:', data);
         this.lastResult = data;
       }),
 
       this.socketService.on<any>('game_over').subscribe(data => {
-        console.log('Game over event received:', data);
+        console.log('🏁 Game over!');
         this.gameState = 'finished';
         this.finalLeaderboard = data.leaderboard;
         this.socketService.clearSessionInfo();
       }),
 
       this.socketService.on<any>('connection_established').subscribe(data => {
-        console.log('Connection established:', data);
+        console.log('🔗 Connection established:', data);
       })
     );
   }
 
   joinGame(): void {
     if (this.playerName.trim() && !this.isJoining) {
-      console.log('Attempting to join game:', this.sessionId, this.playerName);
+      console.log('🚀 Attempting to join game:', this.sessionId, this.playerName);
       this.isJoining = true;
       this.socketService.joinSession(this.sessionId, this.playerName.trim());
       
       // Timeout fallback
       setTimeout(() => {
         if (this.isJoining && !this.joined) {
-          console.error('Join timeout - no response from server');
+          console.error('⏱️ Join timeout - no response from server');
           this.isJoining = false;
           alert('Errore di connessione. Riprova.');
         }
@@ -164,7 +169,7 @@ export class PlayerComponent implements OnInit, OnDestroy {
 
   submitAnswer(): void {
     if (this.selectedAnswer !== -1 && !this.answered) {
-      console.log('Submitting answer:', this.selectedAnswer);
+      console.log('📝 Submitting answer:', this.selectedAnswer);
       this.socketService.submitAnswer(this.selectedAnswer);
       this.answered = true;
     }
