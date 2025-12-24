@@ -32,6 +32,9 @@ export class PlayerComponent implements OnInit, OnDestroy {
   lastResult: { points_earned: number; is_correct: boolean } | null = null;
   finalLeaderboard: any[] = [];
 
+  // Expose to template
+  String = String;
+
   private subscriptions: Subscription[] = [];
 
   constructor(

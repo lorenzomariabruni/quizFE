@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { SocketService } from '../../services/socket.service';
 import { Subscription } from 'rxjs';
 import * as QRCode from 'qrcode';
@@ -33,9 +34,15 @@ export class HostComponent implements OnInit, OnDestroy {
   correctAnswer = -1;
   qrCodeUrl = '';
 
+  // Expose to template
+  String = String;
+
   private subscriptions: Subscription[] = [];
 
-  constructor(private socketService: SocketService) {}
+  constructor(
+    private socketService: SocketService,
+    private router: Router
+  ) {}
 
   async ngOnInit() {
     // Create session
@@ -87,6 +94,10 @@ export class HostComponent implements OnInit, OnDestroy {
     } else {
       alert('Aspetta che almeno un giocatore si unisca!');
     }
+  }
+
+  goHome(): void {
+    this.router.navigate(['/']);
   }
 
   ngOnDestroy() {
