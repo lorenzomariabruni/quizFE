@@ -50,7 +50,6 @@ export class PlayerComponent implements OnInit, OnDestroy {
   String = String;
 
   private subscriptions: Subscription[] = [];
-  private wakeLock: any = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -121,7 +120,7 @@ export class PlayerComponent implements OnInit, OnDestroy {
 
     // Join response
     this.subscriptions.push(
-      this.socketService.on<any>('joined_session').subscribe(data => {
+      this.socketService.on<any>('joined_session').subscribe(async (data) => {
         console.log('✅ Joined session successfully:', data);
         this.joined = true;
         this.joining = false;
@@ -138,6 +137,18 @@ export class PlayerComponent implements OnInit, OnDestroy {
 
         if (this.reconnected) {
           console.log('🔄 Reconnected to existing session');
+        }
+
+        // 🔒 ACTIVATE WAKE LOCK AS SOON AS PLAYER JOINS
+        console.log('\n🔒 Player joined - activating wake lock now...');
+        const acquired = await this.wakeLockService.requestWakeLock();
+        console.log('📊 Wake lock status:', this.wakeLockService.getStatus());
+        console.log('📊 Wake lock active?', this.wakeLockService.isActive());
+        
+        if (acquired) {
+          console.log('✅✅✅ WAKE LOCK IS NOW ACTIVE - SCREEN SHOULD STAY ON ✅✅✅');
+        } else {
+          console.warn('⚠️⚠️⚠️ WAKE LOCK ACTIVATION FAILED ⚠️⚠️⚠️');
         }
       })
     );
@@ -171,11 +182,8 @@ export class PlayerComponent implements OnInit, OnDestroy {
         console.log('🎮 Game started!');
         this.gameState = 'playing';
         
-        // 🔒 Acquire wake lock when game starts to keep screen on
-        const acquired = await this.wakeLockService.requestWakeLock();
-        if (acquired) {
-          console.log('📱 Screen will stay awake during game');
-        }
+        // Check if wake lock is still active
+        console.log('📊 Wake lock status at game start:', this.wakeLockService.getStatus());
       })
     );
 
