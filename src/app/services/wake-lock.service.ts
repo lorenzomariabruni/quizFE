@@ -12,16 +12,16 @@ import { Injectable } from '@angular/core';
 })
 export class WakeLockService {
   private wakeLock: any = null;
-  private isWakeLockSupported = false;
+  private wakeLockSupported = false;
   private videoElement: HTMLVideoElement | null = null;
   private videoInitialized = false;
 
   constructor() {
     // Check if Wake Lock API is supported
-    this.isWakeLockSupported = 'wakeLock' in navigator;
+    this.wakeLockSupported = 'wakeLock' in navigator;
     
     console.log('=== WAKE LOCK SERVICE INITIALIZED ===');
-    console.log('Wake Lock API supported:', this.isWakeLockSupported);
+    console.log('Wake Lock API supported:', this.wakeLockSupported);
     console.log('Browser:', navigator.userAgent);
     console.log('Platform:', navigator.platform);
   }
@@ -34,7 +34,7 @@ export class WakeLockService {
     console.log('\n🔒 REQUESTING WAKE LOCK...');
     
     // Try Wake Lock API first
-    if (this.isWakeLockSupported) {
+    if (this.wakeLockSupported) {
       const success = await this.requestNativeWakeLock();
       if (success) {
         console.log('✅ Wake Lock acquired successfully!');
@@ -201,8 +201,8 @@ export class WakeLockService {
   /**
    * Check if Wake Lock API is supported on this device
    */
-  isWakeLockSupported(): boolean {
-    return this.isWakeLockSupported;
+  isSupported(): boolean {
+    return this.wakeLockSupported;
   }
 
   /**
