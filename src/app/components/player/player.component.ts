@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SocketService } from '../../services/socket.service';
+import { WakeLockService } from '../../services/wake-lock.service';
 import { Subscription } from 'rxjs';
 
 interface Question {
@@ -49,11 +50,13 @@ export class PlayerComponent implements OnInit, OnDestroy {
   String = String;
 
   private subscriptions: Subscription[] = [];
+  private wakeLock: any = null;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private socketService: SocketService
+    private socketService: SocketService,
+    private wakeLockService: WakeLockService
   ) {}
 
   ngOnInit() {
@@ -164,9 +167,15 @@ export class PlayerComponent implements OnInit, OnDestroy {
 
     // Game started
     this.subscriptions.push(
-      this.socketService.on<any>('game_started').subscribe(() => {
+      this.socketService.on<any>('game_started').subscribe(async () => {
         console.log('🎮 Game started!');
         this.gameState = 'playing';
+        
+        // 🔒 Acquire wake lock when game starts to keep screen on
+        const acquired = await this.wakeLockService.requestWakeLock();
+        if (acquired) {
+          console.log('📱 Screen will stay awake during game');
+        }
       })
     );
 
@@ -229,10 +238,15 @@ export class PlayerComponent implements OnInit, OnDestroy {
 
     // Game over
     this.subscriptions.push(
-      this.socketService.on<any>('game_over').subscribe(data => {
+      this.socketService.on<any>('game_over').subscribe(async (data) => {
         console.log('🏁 Game over:', data);
         this.gameState = 'finished';
         this.leaderboard = data.leaderboard;
+        
+        // 🔓 Release wake lock when game ends
+        await this.wakeLockService.releaseWakeLock();
+        console.log('📱 Screen sleep re-enabled');
+        
         // Clear saved session
         localStorage.removeItem('quiz_session');
       })
@@ -287,7 +301,10 @@ export class PlayerComponent implements OnInit, OnDestroy {
     this.router.navigate(['/']);
   }
 
-  ngOnDestroy() {
+  async ngOnDestroy() {
     this.subscriptions.forEach(sub => sub.unsubscribe());
+    
+    // 🔓 Always release wake lock when component is destroyed
+    await this.wakeLockService.releaseWakeLock();
   }
 }
